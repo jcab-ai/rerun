@@ -14,13 +14,14 @@ extension SecretStore {
         !(apiKey(for: provider) ?? "").isEmpty
     }
 
-    /// A client for `provider`, or nil when no key is saved.
+    /// A client for a cloud `provider`, or nil when no key is saved.
     public func client(for provider: LLMProviderID, transport: HTTPTransport = URLSessionTransport()) -> LLMClient? {
         guard let key = apiKey(for: provider), !key.isEmpty else { return nil }
         switch provider {
         case .anthropic: return AnthropicClient(apiKey: key, transport: transport)
         case .openai: return OpenAIClient(apiKey: key, transport: transport)
         case .gemini: return GeminiClient(apiKey: key, transport: transport)
+        case .onDevice: return nil
         }
     }
 }

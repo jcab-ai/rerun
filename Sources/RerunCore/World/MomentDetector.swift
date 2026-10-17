@@ -85,6 +85,17 @@ public struct MomentDetector {
         return best.1 >= 2 ? best : (.everyday, best.1)
     }
 
+    /// The line most likely to sum up the moment: something they said with
+    /// some feeling in it, short enough for a speech bubble.
+    public static func quote(in messages: [ChatMessage]) -> String? {
+        let theirs = messages.filter { !$0.isFromMe && (8...70).contains($0.text.count) && !$0.text.contains("http") }
+        func heat(_ text: String) -> Int {
+            (VoiceProfiler.hasShoutedWord(text) ? 3 : 0) + (text.contains("!") ? 1 : 0) + (text.contains("?") ? 1 : 0)
+                + (text.contains(where: { VoiceProfiler.isEmoji($0) }) ? 1 : 0)
+        }
+        return theirs.max { heat($0.text) < heat($1.text) }?.text
+    }
+
     public static func provisionalTitle(for tag: MomentTag, date: Date, with name: String) -> String {
         switch tag {
         case .trip: "The trip with \(name)"

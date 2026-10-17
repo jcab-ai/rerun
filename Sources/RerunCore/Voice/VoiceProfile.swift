@@ -22,6 +22,7 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
 
     // Length & rhythm.
     public var medianLength: Int
+    public var medianWords: Int
     /// Average number of messages they send in a row before you reply.
     public var burstSize: Double
     public var medianReplySeconds: Double?
@@ -48,6 +49,7 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
         ellipsisRate: Double = 0,
         elongationRate: Double = 0,
         medianLength: Int = 0,
+        medianWords: Int = 0,
         burstSize: Double = 1,
         medianReplySeconds: Double? = nil,
         emojiPerMessage: Double = 0,
@@ -67,6 +69,7 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
         self.ellipsisRate = ellipsisRate
         self.elongationRate = elongationRate
         self.medianLength = medianLength
+        self.medianWords = medianWords
         self.burstSize = burstSize
         self.medianReplySeconds = medianReplySeconds
         self.emojiPerMessage = emojiPerMessage
@@ -75,6 +78,29 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
         self.slang = slang
         self.signOff = signOff
         self.examples = examples
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        sampleCount = try c.decode(.sampleCount, default: 0)
+        lowercaseRate = try c.decode(.lowercaseRate, default: 0)
+        shoutRate = try c.decode(.shoutRate, default: 0)
+        terminalPeriodRate = try c.decode(.terminalPeriodRate, default: 0)
+        exclamationRate = try c.decode(.exclamationRate, default: 0)
+        questionRate = try c.decode(.questionRate, default: 0)
+        ellipsisRate = try c.decode(.ellipsisRate, default: 0)
+        elongationRate = try c.decode(.elongationRate, default: 0)
+        medianLength = try c.decode(.medianLength, default: 0)
+        medianWords = try c.decode(.medianWords, default: 0)
+        burstSize = try c.decode(.burstSize, default: 1)
+        medianReplySeconds = try c.decodeIfPresent(Double.self, forKey: .medianReplySeconds)
+        emojiPerMessage = try c.decode(.emojiPerMessage, default: 0)
+        topEmoji = try c.decode(.topEmoji, default: [])
+        laughs = try c.decode(.laughs, default: [])
+        slang = try c.decode(.slang, default: [])
+        signOff = try c.decodeIfPresent(String.self, forKey: .signOff)
+        examples = try c.decode(.examples, default: [])
     }
 
     /// Short handwritten descriptors, most distinctive first.
@@ -111,7 +137,7 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
         func percent(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }
         var lines = ["How \(name) texts (measured from \(sampleCount) real messages):"]
         lines.append("- all-lowercase in \(percent(lowercaseRate)) of messages; ALL-CAPS words in \(percent(shoutRate))")
-        lines.append("- typical length ~\(medianLength) characters; sends ~\(String(format: "%.1f", burstSize)) messages in a row")
+        lines.append("- typical length ~\(medianLength) characters (~\(medianWords) words); sends ~\(String(format: "%.1f", burstSize)) messages in a row")
         lines.append("- ends with a period \(percent(terminalPeriodRate)), uses ! \(percent(exclamationRate)), ? \(percent(questionRate)), ellipses \(percent(ellipsisRate))")
         if emojiPerMessage > 0.05 {
             let favorites = topEmoji.isEmpty ? "" : " — favorites: \(topEmoji.joined(separator: " "))"
@@ -129,6 +155,64 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
             lines += examples.map { "  \"\($0)\"" }
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Sticker-sized traits for the storyline header ("LMAOOO (3+ O's)").
+    public var badges: [String] {
+        var badges: [String] = []
+        if lowercaseRate > 0.9 {
+            badges.append("lowercase, always")
+        } else if lowercaseRate > 0.65 {
+            badges.append("mostly lowercase")
+        }
+        if terminalPeriodRate > 0.6 { badges.append("full stops. always.") }
+        if let signOff { badges.append("signs off “\(signOff)”") }
+        if let laugh = laughs.first {
+            let upper = laugh.uppercased()
+            if let last = upper.last, upper.reversed().prefix(while: { $0 == last }).count >= 3 {
+                badges.append("\(upper) (3+ \(last)'s)")
+            } else {
+                badges.append(upper)
+            }
+        }
+        if burstSize >= 1.8 { badges.append("texts in bursts of \(Int(burstSize.rounded()))") }
+        if medianWords > 0 { badges.append("~\(medianWords) word\(medianWords == 1 ? "" : "s") a text") }
+        if shoutRate > 0.05 { badges.append("ALL CAPS = real panic") }
+        if emojiPerMessage > 0.5, let emoji = topEmoji.first { badges.append("\(emoji) in every other text") }
+        if let reply = medianReplySeconds {
+            if reply < 60 { badges.append("replies in seconds") }
+            if reply > 3 * 3600 { badges.append("replies hours later") }
+        }
+        if let word = slang.first(where: { $0.count > 2 }) { badges.append("says “\(word)” a lot") }
+        return Array(badges.prefix(6))
+    }
+
+    /// Plain sentences for "what the texts taught us".
+    public var learnedLines: [String] {
+        var lines: [String] = []
+        if terminalPeriodRate > 0.6 { lines.append("Ends every text with a period.") }
+        if lowercaseRate > 0.9 { lines.append("Has never once used the shift key.") }
+        if let signOff { lines.append("Signs off “\(signOff).” Every time.") }
+        if shoutRate > 0.08 { lines.append("Saves ALL CAPS for real emergencies.") }
+        if burstSize > 2.5 { lines.append("Sends \(Int(burstSize.rounded())) texts where one would do.") }
+        if let laugh = laughs.first { lines.append("Laughs in “\(laugh)”.") }
+        if emojiPerMessage < 0.03 {
+            lines.append(topEmoji.first.map { "One \($0) a month, max." } ?? "Has never sent an emoji.")
+        } else if emojiPerMessage > 0.5, let emoji = topEmoji.first {
+            lines.append("Emoji in almost every text — mostly \(emoji).")
+        }
+        if let reply = medianReplySeconds, medianWords > 0 {
+            lines.append("Replies avg. \(medianWords) words, \(Self.describeShort(seconds: reply)) later.")
+        }
+        return Array(lines.prefix(4))
+    }
+
+    static func describeShort(seconds: Double) -> String {
+        switch seconds {
+        case ..<90: "\(Int(seconds)) sec"
+        case ..<5400: "\(Int((seconds / 60).rounded())) min"
+        default: "\(Int((seconds / 3600).rounded())) hrs"
+        }
     }
 
     static func describe(seconds: Double) -> String {

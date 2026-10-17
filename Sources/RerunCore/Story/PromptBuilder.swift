@@ -33,7 +33,9 @@ public struct StoryContext: Sendable {
 public enum PromptBuilder {
     public static let maxExcerptMessages = 40
 
-    public static func system(for context: StoryContext) -> String {
+    /// - Parameter compact: the slim version for small on-device models
+    ///   (no real-text excerpt, no example texts).
+    public static func system(for context: StoryContext, run: StoryRun? = nil, compact: Bool = false) -> String {
         let moment = context.moment
         let settings = context.settings
         let player = settings.player.name
@@ -67,7 +69,7 @@ public enum PromptBuilder {
         let castText = context.cast.map { member in
             let name = member.person.displayName
             guard let voice = member.voice else { return "\(name): no texting history available." }
-            return voice.promptDescription(name: name, includeExamples: settings.shareVoiceExamples)
+            return voice.promptDescription(name: name, includeExamples: settings.shareVoiceExamples && !compact)
         }
         if !castText.isEmpty { sections.append("Cast:\n" + castText.joined(separator: "\n\n")) }
 
@@ -82,20 +84,32 @@ public enum PromptBuilder {
             sections.append("Context from \(player) that the texts don't show — treat as true:\n" + lines.joined(separator: "\n"))
         }
 
-        if settings.shareMomentExcerpt && !context.excerpt.isEmpty {
+        if settings.shareMomentExcerpt && !compact && !context.excerpt.isEmpty {
             sections.append("The real texts from this moment (for grounding; don't quote them wholesale):\n" + excerptText(context))
         }
+
+        let chapters = run?.chapterCount ?? moment.chapterCount
+        sections.append("""
+        The story has \(chapters) chapters. Each turn is one beat: it reacts to what \(player) just texted, sets the \
+        next scene, and ends on a choice. End every chapter with "ends_chapter": true. On the last beat of chapter \
+        \(chapters), set "ends_story": true, give no choices, and write the "outcome" — how it ended, past tense, \
+        second person, under eight words (like "you caught the 9:15").
+        """)
 
         let names = context.cast.map(\.person.displayName).joined(separator: "\", \"")
         sections.append("""
         Reply with only a JSON object, no prose around it:
         {
-          "chapter_title": string,          // short, lowercase-friendly
+          "chapter_title": string,          // short, lowercase-friendly ("gate 14")
+          "clock": string,                  // in-story time, like "6:52"
+          "reactions": [{"from": "\(names)", "text": string}],  // 0-4 replies to what \(player) just texted
           "narration": string,              // 1-3 sentences of scene-setting, present tense, second person
           "aside": string,                  // a wry handwritten-style one-liner, optional
-          "messages": [{"from": "\(names)", "text": string}],   // 1-6 incoming texts
-          "choices": [string, string, string],   // what \(player) could text back, in their voice
+          "messages": [{"from": "\(names)", "text": string}],   // 1-6 incoming texts that open the scene
+          "choices": [string, string, string],   // what \(player) could do; put texts they'd send in “curly quotes”
           "ends_chapter": boolean,
+          "ends_story": boolean,
+          "outcome": string,                // only when ends_story is true
           "next_scene": one of \(MomentTag.allCases.map(\.rawValue))
         }
         """)
@@ -110,7 +124,10 @@ public enum PromptBuilder {
             messages.append(LLMMessage(.assistant, StoryBeatParser.encode(beat, cast: context.cast)))
             guard let picked = beat.pickedChoice, beat.choices.indices.contains(picked) else { break }
             let next = beat.endsChapter ? "Start chapter \(beat.chapter + 1) of \(run.chapterCount)." : "Continue."
-            messages.append(LLMMessage(.user, "\(context.settings.player.name) texts: \"\(beat.choices[picked].text)\". \(next)"))
+            let pick = beat.choices[picked]
+            let action = pick.sentText.map { "texts: \"\($0)\"" } ?? "chooses to: \(pick.text)"
+            let final = beat.chapter >= run.chapterCount && beat.endsChapter ? "That was the last choice. Write the ending beat." : next
+            messages.append(LLMMessage(.user, "\(context.settings.player.name) \(action). \(final)"))
         }
         return messages
     }

@@ -71,6 +71,7 @@ public struct VoiceProfiler {
             ellipsisRate: rate { $0.contains("...") || $0.contains("…") },
             elongationRate: rate(Self.hasElongatedWord),
             medianLength: Self.median(texts.map(\.count)),
+            medianWords: Self.median(texts.map { Self.words($0).count }),
             burstSize: Self.averageBurst(thread, isTheirs: isTheirs),
             medianReplySeconds: medianReply(thread, isTheirs: isTheirs),
             emojiPerMessage: Double(emojiTotal) / count,

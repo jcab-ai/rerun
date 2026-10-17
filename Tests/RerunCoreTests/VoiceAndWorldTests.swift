@@ -115,7 +115,8 @@ final class WorldLayoutTests: XCTestCase {
     func testDemoWorldIsConsistent() {
         let momentIDs = Set(DemoWorld.moments.map(\.id))
         let personIDs = Set(DemoWorld.people.map(\.id))
-        XCTAssertEqual(Set(DemoWorld.map.nodes.map(\.momentID)), momentIDs)
+        XCTAssertTrue(Set(DemoWorld.map.nodes.map(\.momentID)).isSubset(of: momentIDs))
+        XCTAssertEqual(DemoWorld.map.nodes.count, 11, "the mockup's eleven stickers")
         XCTAssertTrue(DemoWorld.moments.allSatisfy { $0.personIDs.allSatisfy(personIDs.contains) })
         XCTAssertTrue(DemoWorld.map.links.allSatisfy { momentIDs.contains($0.fromMomentID) && momentIDs.contains($0.toMomentID) })
         XCTAssertEqual(DemoWorld.map.momentCount, 412)
