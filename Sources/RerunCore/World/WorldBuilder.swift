@@ -12,6 +12,12 @@ public struct WorldBuildProgress: Sendable {
     public var phase: Phase
     public var fraction: Double
     public var detail: String?
+
+    public init(phase: Phase, fraction: Double, detail: String? = nil) {
+        self.phase = phase
+        self.fraction = fraction
+        self.detail = detail
+    }
 }
 
 /// Builds (or rebuilds) the world from Messages: people, voice profiles,
