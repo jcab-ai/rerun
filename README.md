@@ -16,7 +16,7 @@ CI renders the SwiftUI screens at the same size so they can be compared side by 
 | **Moment detail** | A torn sheet over the blurred world with an evidence board per moment type — boarding pass (with MISSED stamp), receipt, ticket stub, voice memo, polaroid — plus the people in it, the last run's outcome and **play**. |
 | **Play** | The story plays out as a simulated iMessage thread inside the app, never sent anywhere: chapter card, lock-screen polaroid, typing dots and read receipts, a live voice-match score, three choices, "Chapter N unlocked", endings. |
 | **People · storylines** | Photo-booth strips for everyone; each person's storyline on a hand-drawn timeline with their texting-voice badges ("LMAOOO (3+ O's)"). |
-| **Moments** | A scrapbook of every moment by year, filterable by kind. |
+| **Moments** | A scrapbook of every moment by year, filterable by kind, each year closed out with a little recap receipt (moments, real texts, plays, who was loudest). |
 | **Context notes** | A lined notepad for what the texts don't say, pinned to a person or to specific moments. Notes go into story prompts, never back to anyone. |
 | **Settings (Contents)** | Who's included, story style, story model (on this Mac or cloud), off-limits topics, rescan, export notes, erase everything. API keys and per-scene model routing live in the ⌘, window. |
 | **Empty & error states** | No conversations, Messages locked (Full Disk Access), chapter lost in the mail, no storyteller yet. |
