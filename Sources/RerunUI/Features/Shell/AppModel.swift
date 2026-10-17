@@ -125,7 +125,7 @@ public final class AppModel: ObservableObject {
                 moments = try store.all(Moment.self)
                 voices = Dictionary(try store.all(VoiceProfile.self).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 notes = try store.all(ContextNote.self)
-                settings = stored ?? AppSettings(hasCompletedOnboarding: true)
+                settings = stored ?? AppSettings(player: Self.defaultPlayer, hasCompletedOnboarding: true)
                 isSampleWorld = false
                 return
             }
@@ -136,26 +136,26 @@ public final class AppModel: ObservableObject {
         }
     }
 
+    /// Shows the sample world. `settings` stay yours (they're what gets saved);
+    /// only previews without a store borrow the sample's settings too.
     private func loadSampleWorld(keeping stored: AppSettings?) {
         people = DemoWorld.people
         moments = DemoWorld.moments
         map = DemoWorld.map
         voices = Dictionary(DemoWorld.voices.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         notes = DemoWorld.notes
-        var sample = DemoWorld.settings()
-        if let stored {
-            // Your own choices win; the sample only lends its player and topics.
-            sample.storyStyle = stored.storyStyle
-            sample.storyModel = stored.storyModel
-            sample.routing = stored.routing
-            sample.neverInventBreakupsOrDeaths = stored.neverInventBreakupsOrDeaths
-            sample.hasCompletedOnboarding = stored.hasCompletedOnboarding
-        } else {
-            sample.hasCompletedOnboarding = store == nil
-        }
-        settings = sample
+        settings = stored ?? (store == nil ? DemoWorld.settings() : AppSettings(player: Self.defaultPlayer))
         isSampleWorld = true
     }
+
+    /// Your first name from your Mac account, for the "you" node.
+    static var defaultPlayer: PlayerProfile {
+        let first = NSFullUserName().split(separator: " ").first.map(String.init) ?? ""
+        return PlayerProfile(name: first.isEmpty ? "you" : first)
+    }
+
+    /// Who's at the center of the world on screen.
+    public var player: PlayerProfile { isSampleWorld ? DemoWorld.player : settings.player }
 
     // MARK: Lookups
 
@@ -253,11 +253,13 @@ public final class AppModel: ObservableObject {
 
     public func play(_ moment: Moment) {
         let cast = moment.personIDs.compactMap(person).map { CastMember(person: $0, voice: voices[$0.id]) }
+        var storySettings = settings
+        storySettings.player = player
         let context = StoryContext(
             moment: moment,
             cast: cast,
             notes: notes.relevant(to: moment),
-            settings: settings,
+            settings: storySettings,
             excerpt: (try? excerpt(for: moment)) ?? []
         )
         let teller = LayeredStoryTeller(scripted: scripted, engine: storyEngine, settings: settings)
@@ -305,6 +307,16 @@ public final class AppModel: ObservableObject {
 
     public func useOnDeviceModel() {
         updateSettings { $0.storyModel = .onDevice }
+    }
+
+    /// Gives a moment a real title (detected moments start with placeholders).
+    public func rename(_ momentID: String, to title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let index = moments.firstIndex(where: { $0.id == momentID }) else { return }
+        moments[index].title = trimmed
+        moments[index].titleIsProvisional = false
+        let moment = moments[index]
+        persist { try $0.save(moment) }
     }
 
     // MARK: Notes
@@ -456,6 +468,8 @@ public final class AppModel: ObservableObject {
         onboarding = .building
         buildProgress = WorldBuildProgress(phase: .copying, fraction: 0)
         requestNotificationPermission()
+        // The builder keeps whatever settings are stored (your name, topics, models).
+        persist(evenInSampleWorld: true) { store in try store.save(self.settings) }
 
         let names = SystemContactNames()
         await names.load()

@@ -127,22 +127,37 @@ struct WorldMapView: View {
 /// The fixed 980×680 world: lines, hubs, stickers and "you", in map coordinates.
 private struct WorldCanvas: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.isRenderingSnapshot) private var isRenderingSnapshot
+    /// 0 → 1 as the lines draw themselves out from "you".
+    @State private var drawn: CGFloat = 0
+    @State private var shown = false
 
     var body: some View {
         let featuredID = model.featuredMomentID
+        let settled = isRenderingSnapshot || shown
         ZStack(alignment: .topLeading) {
-            MapLines(map: model.map, moments: model.moments, people: model.people, filter: model.personFilter)
+            DeskDoodles(featured: featuredID.flatMap(model.map.node(for:)), years: model.map.yearsSpanned())
 
-            ForEach(Array(model.map.hubs.enumerated()), id: \.offset) { _, hub in
+            OrbitRing()
+                .position(x: WorldMap.center.x, y: WorldMap.center.y - 16)
+
+            MapLines(map: model.map, moments: model.moments, people: model.people, filter: model.personFilter, progress: isRenderingSnapshot ? 1 : drawn)
+
+            ForEach(Array(model.map.hubs.enumerated()), id: \.offset) { index, hub in
                 if let count = hub.hiddenCount, let person = hub.personID.flatMap(model.person) {
-                    CountTag("+\(count)", fill: person.color.fill, foreground: person.color.onFill)
-                        .frame(width: 0, height: 0, alignment: .leading)
-                        .position(x: hub.position.x + 10, y: hub.position.y)
-                        .opacity(dimmed(personID: person.id) ? 0.25 : 1)
+                    Button { model.openStoryline(person.id) } label: {
+                        CountTag("+\(count)", fill: person.color.fill, foreground: person.color.onFill)
+                    }
+                    .buttonStyle(LiftOnHoverStyle())
+                    .help("\(count) more moments with \(person.displayName)")
+                    .frame(width: 0, height: 0, alignment: .leading)
+                    .position(x: hub.position.x + 10, y: hub.position.y)
+                    .opacity(dimmed(personID: person.id) ? 0.25 : (settled ? 1 : 0))
+                    .animation(.easeOut(duration: 0.3).delay(0.6 + Double(index) * 0.05), value: shown)
                 }
             }
 
-            ForEach(model.map.nodes, id: \.momentID) { node in
+            ForEach(Array(model.map.nodes.enumerated()), id: \.element.momentID) { index, node in
                 if let moment = model.moment(node.momentID) {
                     MomentSticker(
                         moment: moment,
@@ -152,13 +167,16 @@ private struct WorldCanvas: View {
                     ) {
                         model.openMomentID = moment.id
                     }
+                    .scaleEffect(settled ? 1 : 0.55)
+                    .opacity(settled ? 1 : 0)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.62).delay(0.15 + Double(index) * 0.045), value: shown)
                     .position(x: node.position.x, y: node.position.y)
                     .opacity(model.isDimmed(moment) ? 0.25 : 1)
                     .zIndex(moment.id == featuredID ? 2 : 1)
                 }
             }
 
-            YouNode(player: model.settings.player)
+            YouNode(player: model.player)
                 .position(x: WorldMap.center.x, y: WorldMap.center.y)
                 .zIndex(3)
 
@@ -170,6 +188,11 @@ private struct WorldCanvas: View {
         }
         .frame(width: WorldMap.canvasWidth, height: WorldMap.canvasHeight, alignment: .topLeading)
         .animation(.easeOut(duration: 0.2), value: model.personFilter)
+        .onAppear {
+            guard !isRenderingSnapshot else { return }
+            withAnimation(.easeInOut(duration: 1.1)) { drawn = 1 }
+            shown = true
+        }
     }
 
     private func dimmed(personID: String) -> Bool {
@@ -178,63 +201,137 @@ private struct WorldCanvas: View {
 }
 
 /// Curved lines from "you" to each sticker (solid once played, dotted before),
-/// thin dashed links between related moments, and the hub dots.
+/// thin dashed links between related moments, and the hub dots. They draw
+/// themselves out from the center as `progress` goes 0 → 1.
 private struct MapLines: View {
     let map: WorldMap
     let moments: [Moment]
     let people: [Person]
     let filter: String?
+    var progress: CGFloat
 
     var body: some View {
-        Canvas { context, _ in
-            let momentsByID = Dictionary(moments.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            let peopleByID = Dictionary(people.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            let center = CGPoint(map: WorldMap.center)
-
-            for node in map.nodes {
-                guard let moment = momentsByID[node.momentID] else { continue }
-                var path = Path()
-                path.move(to: center)
-                path.addQuadCurve(to: CGPoint(map: node.position), control: CGPoint(map: node.control))
-                let color = peopleByID[moment.primaryPersonID]?.color.line ?? Tokens.Palette.ink
-                let style = StrokeStyle(
-                    lineWidth: Tokens.Stroke.edge,
-                    lineCap: .round,
-                    dash: moment.hasBeenPlayed ? [] : [2, 7]
-                )
-                context.stroke(path, with: .color(color.opacity(dimmed(moment) ? 0.25 : 1)), style: style)
+        let momentsByID = Dictionary(moments.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let peopleByID = Dictionary(people.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        ZStack(alignment: .topLeading) {
+            ForEach(map.nodes, id: \.momentID) { node in
+                if let moment = momentsByID[node.momentID] {
+                    let color = peopleByID[moment.primaryPersonID]?.color.line ?? Tokens.Palette.ink
+                    CurveShape(from: WorldMap.center, control: node.control, to: node.position)
+                        .trim(from: 0, to: progress)
+                        .stroke(
+                            color.opacity(dimmed(moment) ? 0.25 : 1),
+                            style: StrokeStyle(lineWidth: Tokens.Stroke.edge, lineCap: .round, dash: moment.hasBeenPlayed ? [] : [2, 7])
+                        )
+                }
             }
-
-            for link in map.links {
-                guard let from = map.node(for: link.fromMomentID), let to = map.node(for: link.toMomentID) else { continue }
-                var path = Path()
-                path.move(to: CGPoint(map: from.position))
-                path.addQuadCurve(to: CGPoint(map: to.position), control: CGPoint(map: link.control))
-                let person = momentsByID[link.fromMomentID].flatMap { peopleByID[$0.primaryPersonID] }
-                let color = link.tinted ? (person?.color.line ?? Tokens.Palette.ink).opacity(0.6) : Tokens.Palette.ink.opacity(0.35)
-                let isDimmed = momentsByID[link.fromMomentID].map(dimmed) ?? false
-                context.stroke(
-                    path,
-                    with: .color(color.opacity(isDimmed ? 0.25 : 1)),
-                    style: StrokeStyle(lineWidth: Tokens.Stroke.link, lineCap: .round, dash: [4, 5])
-                )
+            ForEach(Array(map.links.enumerated()), id: \.offset) { _, link in
+                if let from = map.node(for: link.fromMomentID), let to = map.node(for: link.toMomentID) {
+                    let person = momentsByID[link.fromMomentID].flatMap { peopleByID[$0.primaryPersonID] }
+                    let color = link.tinted ? (person?.color.line ?? Tokens.Palette.ink).opacity(0.6) : Tokens.Palette.ink.opacity(0.35)
+                    let isDimmed = momentsByID[link.fromMomentID].map(dimmed) ?? false
+                    CurveShape(from: from.position, control: link.control, to: to.position)
+                        .trim(from: 0, to: max(0, progress * 2 - 1))
+                        .stroke(color.opacity(isDimmed ? 0.25 : 1), style: StrokeStyle(lineWidth: Tokens.Stroke.link, lineCap: .round, dash: [4, 5]))
+                }
             }
-
-            for hub in map.hubs {
-                let r = hub.radius
+            ForEach(Array(map.hubs.enumerated()), id: \.offset) { _, hub in
                 let isDimmed = filter != nil && hub.personID != filter
-                context.fill(
-                    Path(ellipseIn: CGRect(x: hub.position.x - r, y: hub.position.y - r, width: r * 2, height: r * 2)),
-                    with: .color(Tokens.Palette.ink.opacity(isDimmed ? 0.2 : 0.85))
-                )
+                Circle()
+                    .fill(Tokens.Palette.ink.opacity(isDimmed ? 0.2 : 0.85))
+                    .frame(width: hub.radius * 2, height: hub.radius * 2)
+                    .scaleEffect(progress)
+                    .position(x: hub.position.x, y: hub.position.y)
             }
         }
-        .frame(width: WorldMap.canvasWidth, height: WorldMap.canvasHeight)
+        .frame(width: WorldMap.canvasWidth, height: WorldMap.canvasHeight, alignment: .topLeading)
         .allowsHitTesting(false)
     }
 
     private func dimmed(_ moment: Moment) -> Bool {
         filter.map { !moment.personIDs.contains($0) } ?? false
+    }
+}
+
+/// A quadratic curve in map coordinates.
+struct CurveShape: Shape {
+    var from: MapPoint
+    var control: MapPoint
+    var to: MapPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(map: from))
+        path.addQuadCurve(to: CGPoint(map: to), control: CGPoint(map: control))
+        return path
+    }
+}
+
+/// A dashed orbit around "you", turning slowly, with a little moon on it.
+private struct OrbitRing: View {
+    @Environment(\.isRenderingSnapshot) private var isRenderingSnapshot
+    @State private var turning = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Tokens.Palette.ink.opacity(0.16), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [1, 7]))
+            Circle()
+                .fill(Tokens.Palette.sun)
+                .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                .frame(width: 12, height: 12)
+                .offset(y: -118)
+        }
+        .frame(width: 236, height: 236)
+        .rotationEffect(.degrees(turning ? 360 : 38))
+        .allowsHitTesting(false)
+        .onAppear {
+            guard !isRenderingSnapshot else { return }
+            withAnimation(.linear(duration: 90).repeatForever(autoreverses: false)) { turning = true }
+        }
+    }
+}
+
+/// Things left lying on the desk: a coffee ring, a postmark, sparkles, and a
+/// note pointing at the moment you played last.
+private struct DeskDoodles: View {
+    let featured: MapNode?
+    let years: Int
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            CoffeeRing().frame(width: 110, height: 110).position(x: 64, y: 612)
+            Postmark(top: "RERUN", middle: "\(years) YRS", bottom: "LOCAL ONLY", color: Tokens.Palette.coral)
+                .rotationEffect(.degrees(-12))
+                .position(x: 934, y: 46)
+            sparkle(Tokens.Palette.sun, 18, at: CGPoint(x: 452, y: 202), tilt: 12)
+            sparkle(Tokens.Palette.blue, 14, at: CGPoint(x: 612, y: 462), tilt: -8)
+            sparkle(Tokens.Palette.grape, 16, at: CGPoint(x: 212, y: 398), tilt: 20)
+            sparkle(Tokens.Palette.coral, 12, at: CGPoint(x: 940, y: 352), tilt: 0)
+            if let featured, featured.position.x - featured.width / 2 > 110 {
+                let target = CGPoint(x: featured.position.x - featured.width / 2 - 6, y: featured.position.y - 6)
+                Text("start here")
+                    .font(Tokens.Typeface.caveat(bold: false).font(size: 21))
+                    .foregroundStyle(Tokens.Palette.ink)
+                    .rotationEffect(.degrees(-8))
+                    .position(x: target.x - 70, y: target.y - 46)
+                Doodle.arrow
+                    .foregroundStyle(Tokens.Palette.ink.opacity(0.75))
+                    .frame(width: 46, height: 30)
+                    .rotationEffect(.degrees(28))
+                    .position(x: target.x - 26, y: target.y - 18)
+            }
+        }
+        .frame(width: WorldMap.canvasWidth, height: WorldMap.canvasHeight, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    private func sparkle(_ color: Color, _ size: CGFloat, at point: CGPoint, tilt: Double) -> some View {
+        Doodle.star
+            .foregroundStyle(color)
+            .frame(width: size, height: size)
+            .rotationEffect(.degrees(tilt))
+            .position(point)
     }
 }
 

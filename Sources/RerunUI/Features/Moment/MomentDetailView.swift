@@ -7,6 +7,9 @@ struct MomentDetailView: View {
     @EnvironmentObject private var model: AppModel
     let moment: Moment
     @State private var appeared = false
+    @State private var renaming = false
+    @State private var draftTitle = ""
+    @FocusState private var titleFocused: Bool
 
     private var person: Person? { model.person(moment.primaryPersonID) }
     private var color: PersonColor { person?.color ?? .coral }
@@ -52,7 +55,7 @@ struct MomentDetailView: View {
 
     private var card: some View {
         HStack(alignment: .top, spacing: 44) {
-            EvidenceBoard(moment: moment, person: person, player: model.settings.player)
+            EvidenceBoard(moment: moment, person: person, player: model.player)
                 .frame(width: 400)
             details
         }
@@ -82,19 +85,7 @@ struct MomentDetailView: View {
             }
             .overlay(alignment: .topTrailing) { closeButton.offset(x: 14, y: -14) }
 
-            Text(moment.title)
-                .textStyle(Tokens.Typography.displayTitle)
-                .foregroundStyle(Tokens.Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .overlay(alignment: .topTrailing) {
-                    if moment.titleIsProvisional {
-                        Text("working title")
-                            .font(Tokens.Typeface.caveat(bold: false).font(size: 18))
-                            .foregroundStyle(Tokens.Palette.coral)
-                            .rotationEffect(.degrees(6))
-                            .offset(x: 10, y: -14)
-                    }
-                }
+            title
 
             if !moment.summary.isEmpty {
                 Text(moment.summary)
@@ -155,6 +146,46 @@ struct MomentDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var title: some View {
+        if renaming {
+            TextField("name this moment", text: $draftTitle)
+                .textFieldStyle(.plain)
+                .textStyle(Tokens.Typography.displayTitle)
+                .foregroundStyle(Tokens.Palette.ink)
+                .focused($titleFocused)
+                .onSubmit(commitTitle)
+                .onExitCommand { renaming = false }
+                .overlay(alignment: .bottom) { Rectangle().fill(Tokens.Palette.coral).frame(height: 2).offset(y: 4) }
+        } else {
+            Text(moment.title)
+                .textStyle(Tokens.Typography.displayTitle)
+                .foregroundStyle(Tokens.Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .onTapGesture {
+                    draftTitle = moment.title
+                    renaming = true
+                    titleFocused = true
+                }
+                .help("Click to rename")
+                .overlay(alignment: .topTrailing) {
+                    if moment.titleIsProvisional {
+                        Text("working title — click to rename")
+                            .font(Tokens.Typeface.caveat(bold: false).font(size: 18))
+                            .foregroundStyle(Tokens.Palette.coral)
+                            .rotationEffect(.degrees(4))
+                            .fixedSize()
+                            .offset(x: 10, y: -18)
+                    }
+                }
+        }
+    }
+
+    private func commitTitle() {
+        model.rename(moment.id, to: draftTitle)
+        renaming = false
+    }
+
     private var closeButton: some View {
         Button(action: close) {
             Text("✕")
@@ -187,7 +218,7 @@ struct MomentDetailView: View {
                     .buttonStyle(LiftOnHoverStyle())
                     .rotationEffect(.degrees(Tokens.Tilt.chipStarring[index % 2]))
                 }
-                PersonPill(initial: "you", name: model.settings.player.name, caption: nil, color: Tokens.Palette.ink)
+                PersonPill(initial: "you", name: model.player.name, caption: nil, color: Tokens.Palette.ink)
                     .rotationEffect(.degrees(Tokens.Tilt.chipStarring[1]))
             }
         }

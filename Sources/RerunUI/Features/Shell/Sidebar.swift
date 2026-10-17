@@ -29,7 +29,14 @@ struct Sidebar: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.xs) {
             Wordmark()
-            Text("\(model.settings.player.name.uppercased())'S WORLD · \(model.map.momentCount) MOMENTS")
+                .overlay(alignment: .topTrailing) {
+                    Doodle.star
+                        .foregroundStyle(Tokens.Palette.sun)
+                        .frame(width: 12, height: 12)
+                        .rotationEffect(.degrees(15))
+                        .offset(x: 14, y: -4)
+                }
+            Text("\(model.player.name.uppercased())'S WORLD · \(model.map.momentCount) MOMENTS")
                 .textStyle(Tokens.Typography.monoCaption.withTracking(0.5))
                 .foregroundStyle(Tokens.Palette.pencil)
                 .lineLimit(1)
@@ -159,6 +166,13 @@ private struct NavItem: View {
                     Text(screen.label)
                         .textStyle(Tokens.Typography.navItem)
                         .foregroundStyle(Tokens.Palette.ink)
+                    Spacer(minLength: 0)
+                    if hovering {
+                        Text("⌘\(screen.number.suffix(1))")
+                            .textStyle(Tokens.TextStyle(.mono(bold: false), 9))
+                            .foregroundStyle(Tokens.Palette.pencil)
+                            .transition(.opacity)
+                    }
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)
@@ -168,7 +182,7 @@ private struct NavItem: View {
                         .fill(Tokens.Palette.card.opacity(hovering ? 0.55 : 0))
                 )
                 .contentShape(Rectangle())
-                .onHover { hovering = $0 }
+                .onHover { inside in withAnimation(.easeOut(duration: 0.12)) { hovering = inside } }
             }
         }
         .buttonStyle(.plain)
