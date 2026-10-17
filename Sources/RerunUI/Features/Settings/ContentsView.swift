@@ -11,6 +11,10 @@ struct ContentsView: View {
     @State private var newTopic = ""
     @State private var confirmingErase = false
     @State private var exported = false
+    @State private var showsEveryone = false
+
+    /// Left-out conversations listed before the rest fold into "+ N more".
+    private static let leftOutShown = 8
 
     var body: some View {
         ZStack {
@@ -74,18 +78,57 @@ struct ContentsView: View {
 
     private var conversations: some View {
         section("I.", Tokens.Palette.coral, "Conversations included", "\(model.includedPeople.count) of \(model.people.count)") {
-            FlowLayout(spacing: 8) {
-                ForEach(model.people) { person in
-                    Button {
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { model.setIncluded(person.id, !person.included) }
-                    } label: {
-                        personChip(person)
+            VStack(alignment: .leading, spacing: 8) {
+                FlowLayout(spacing: 8) {
+                    ForEach(listedPeople) { person in
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { model.setIncluded(person.id, !person.included) }
+                        } label: {
+                            personChip(person)
+                        }
+                        .buttonStyle(.plain)
+                        .help(person.included ? "Leave \(person.displayName) out of stories" : "Bring \(person.displayName) back")
                     }
-                    .buttonStyle(.plain)
-                    .help(person.included ? "Leave \(person.displayName) out of stories" : "Bring \(person.displayName) back")
+                    if model.people.count > listedPeople.count {
+                        Button("+ \(model.people.count - listedPeople.count) more") {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { showsEveryone = true }
+                        }
+                        .buttonStyle(.plain)
+                        .font(Tokens.Typeface.fredoka(.semibold).font(size: 14))
+                        .foregroundStyle(Tokens.Palette.ink)
+                        .padding(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
+                        .overlay(Capsule().strokeBorder(Tokens.Palette.ink, style: StrokeStyle(lineWidth: 2, dash: [4, 3])))
+                        .help("Every conversation in Messages")
+                    }
+                }
+                if !unread.isEmpty {
+                    Button("\(unreadLabel) new — rescan to read their texts →") { model.rescan() }
+                        .buttonStyle(UnderlineLinkButtonStyle(text: Tokens.TextStyle(.caveat(bold: true), 18), color: Tokens.Palette.coral))
+                } else if !model.isSampleWorld {
+                    Button("pick from every conversation in Messages →") { model.requestMessagesAccess() }
+                        .buttonStyle(UnderlineLinkButtonStyle(text: Tokens.TextStyle(.caveat(bold: true), 18), color: Tokens.Palette.pencil))
                 }
             }
         }
+    }
+
+    /// People included since the last scan, so nothing's been read for them yet.
+    private var unread: [Person] {
+        guard !model.isSampleWorld else { return [] }
+        let read = Set(model.moments.map(\.primaryPersonID))
+        return model.includedPeople.filter { $0.since == nil && !read.contains($0.id) }
+    }
+
+    /// "Sam is" / "3 people are"
+    private var unreadLabel: String {
+        unread.count == 1 ? "\(unread[0].displayName) is" : "\(unread.count) people are"
+    }
+
+    /// Everyone included, then the biggest left-out threads (all of them once expanded).
+    private var listedPeople: [Person] {
+        guard !showsEveryone else { return model.people }
+        let leftOut = Set(model.people.filter { !$0.included }.prefix(Self.leftOutShown).map(\.id))
+        return model.people.filter { $0.included || leftOut.contains($0.id) }
     }
 
     @ViewBuilder
@@ -94,7 +137,7 @@ struct ContentsView: View {
             HStack(spacing: 6) {
                 Text("✓")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(person.color == .sun ? Tokens.Palette.ink : person.color.fill)
+                    .foregroundStyle(person.color.isLight ? Tokens.Palette.ink : person.color.fill)
                     .frame(width: 18, height: 18)
                     .background(Circle().fill(Color.white))
                 Text(person.displayName).font(Tokens.Typeface.fredoka(.semibold).font(size: 14))

@@ -111,5 +111,10 @@ final class ChatDatabaseReaderTests: XCTestCase {
         XCTAssertNil(HandleFormat.phoneKey("maya@example.com"))
         XCTAssertEqual(HandleFormat.fallbackName("maya@example.com"), "maya")
         XCTAssertEqual(HandleFormat.fallbackName("+14155550100"), "…0100")
+        XCTAssertEqual(HandleFormat.readableName("+14155550100"), "(415) 555-0100")
+        XCTAssertEqual(HandleFormat.readableName("4155550100"), "(415) 555-0100")
+        XCTAssertEqual(HandleFormat.readableName("+447700900123"), "+447700900123")
+        XCTAssertEqual(HandleFormat.readableName("22395"), "22395")
+        XCTAssertEqual(HandleFormat.readableName("maya@example.com"), "maya")
     }
 }

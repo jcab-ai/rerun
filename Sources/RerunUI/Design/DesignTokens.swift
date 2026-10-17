@@ -58,6 +58,28 @@ extension Tokens {
         /// #8A4DFF
         public static let grape = Color(hex: 0x8A4DFF)
 
+        // More sticker colors (not in the mockup), so a big world and the
+        // sidebar's screens never have to share.
+        public static let berry = Color(hex: 0xC8285E)
+        public static let cocoa = Color(hex: 0x9C6644)
+        public static let slate = Color(hex: 0x5E7187)
+        public static let olive = Color(hex: 0x8C9A1B)
+        /// Light — needs ink text on top.
+        public static let lavender = Color(hex: 0xB39BFF)
+        public static let forest = Color(hex: 0x1E7A52)
+        /// Light — needs ink text on top.
+        public static let peach = Color(hex: 0xFFA07A)
+        /// World map.
+        public static let tangerine = Color(hex: 0xFF8A1F)
+        /// People.
+        public static let pink = Color(hex: 0xFF5FA8)
+        /// Moments.
+        public static let teal = Color(hex: 0x0FA3A0)
+        /// Context notes.
+        public static let sky = Color(hex: 0x2FB2F5)
+        /// Settings. Light — needs ink text on top.
+        public static let lime = Color(hex: 0xA6D62C)
+
         // Washi tape
         public static let tapeYellow = Color(.sRGB, red: 255 / 255, green: 236 / 255, blue: 170 / 255, opacity: 0.85)
         public static let tapeBlue = Color(.sRGB, red: 150 / 255, green: 190 / 255, blue: 255 / 255, opacity: 0.8)
@@ -94,14 +116,37 @@ extension PersonColor {
         case .leaf: Tokens.Palette.leaf
         case .grape: Tokens.Palette.grape
         case .sun: Tokens.Palette.sun
+        case .berry: Tokens.Palette.berry
+        case .cocoa: Tokens.Palette.cocoa
+        case .slate: Tokens.Palette.slate
+        case .olive: Tokens.Palette.olive
+        case .lavender: Tokens.Palette.lavender
+        case .forest: Tokens.Palette.forest
+        case .peach: Tokens.Palette.peach
+        case .tangerine: Tokens.Palette.tangerine
+        case .pink: Tokens.Palette.pink
+        case .teal: Tokens.Palette.teal
+        case .sky: Tokens.Palette.sky
+        case .lime: Tokens.Palette.lime
         }
     }
 
-    /// The color as a line on paper; yellow darkens so it stays visible.
-    public var line: Color { self == .sun ? Tokens.Palette.sunLine : fill }
+    /// The light colors, which take ink text and darken as lines.
+    var isLight: Bool { [.sun, .lavender, .peach, .lime].contains(self) }
+
+    /// The color as a line on paper; light colors darken so they stay visible.
+    public var line: Color {
+        switch self {
+        case .sun: Tokens.Palette.sunLine
+        case .lavender: Color(hex: 0x8A6BEB)
+        case .peach: Color(hex: 0xEE7A4E)
+        case .lime: Color(hex: 0x7FAE0F)
+        default: fill
+        }
+    }
 
     /// Text drawn on top of `fill`.
-    public var onFill: Color { self == .sun ? Tokens.Palette.ink : .white }
+    public var onFill: Color { isLight ? Tokens.Palette.ink : .white }
 }
 
 extension Color {

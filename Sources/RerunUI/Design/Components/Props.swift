@@ -24,15 +24,27 @@ extension PersonColor {
         case .leaf: [Tokens.Palette.leaf, Color(hex: 0x52C676), Color(hex: 0x7DD597)]
         case .grape: [Tokens.Palette.grape, Color(hex: 0xA170FF), Color(hex: 0xB994FF)]
         case .sun: [Tokens.Palette.sun, Color(hex: 0xFFD25C), Color(hex: 0xFFDF85)]
+        case .berry: [Tokens.Palette.berry, Color(hex: 0xD24F7B), Color(hex: 0xDC7598)]
+        case .cocoa: [Tokens.Palette.cocoa, Color(hex: 0xAE8266), Color(hex: 0xC09D87)]
+        case .slate: [Tokens.Palette.slate, Color(hex: 0x7B8B9D), Color(hex: 0x98A4B2)]
+        case .olive: [Tokens.Palette.olive, Color(hex: 0xA1AC44), Color(hex: 0xB5BE6D)]
+        case .lavender: [Tokens.Palette.lavender, Color(hex: 0xC1ADFF), Color(hex: 0xCEBFFF)]
+        case .forest: [Tokens.Palette.forest, Color(hex: 0x469271), Color(hex: 0x6FAA90)]
+        case .peach: [Tokens.Palette.peach, Color(hex: 0xFFB192), Color(hex: 0xFFC2AA)]
+        case .tangerine: [Tokens.Palette.tangerine, Color(hex: 0xFF9F47), Color(hex: 0xFFB470)]
+        case .pink: [Tokens.Palette.pink, Color(hex: 0xFF7CB8), Color(hex: 0xFF99C7)]
+        case .teal: [Tokens.Palette.teal, Color(hex: 0x3AB4B1), Color(hex: 0x65C4C2)]
+        case .sky: [Tokens.Palette.sky, Color(hex: 0x54C0F7), Color(hex: 0x7ACEF9)]
+        case .lime: [Tokens.Palette.lime, Color(hex: 0xB6DD52), Color(hex: 0xC6E578)]
         }
     }
 
     /// The washi tape that pairs with this color on polaroids.
     public var tape: Color {
         switch self {
-        case .coral, .grape: Tokens.Palette.tapeYellow
-        case .blue, .sun: Tokens.Palette.tapeBlue
-        case .leaf: Tokens.Palette.tapePink
+        case .coral, .grape, .slate, .forest, .pink, .sky: Tokens.Palette.tapeYellow
+        case .blue, .sun, .cocoa, .peach, .lime: Tokens.Palette.tapeBlue
+        case .leaf, .berry, .olive, .lavender, .tangerine, .teal: Tokens.Palette.tapePink
         }
     }
 }

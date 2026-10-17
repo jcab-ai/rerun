@@ -1,14 +1,44 @@
 import Foundation
 
-/// The five sticker colors from the mockup. Core stays UI-agnostic, so this is
-/// a key; RerunUI maps it to the actual palette.
+/// Sticker colors: the mockup's five, seven more so a big world doesn't repeat
+/// itself, and five the sidebar's screens keep to themselves. Core stays
+/// UI-agnostic, so this is a key; RerunUI maps it to the actual palette.
 public enum PersonColor: String, Codable, CaseIterable, Hashable, Sendable {
     case coral, blue, leaf, grape, sun
+    case berry, cocoa, slate, olive, lavender, forest, peach
+    case tangerine, pink, teal, sky, lime
 
-    /// Assignment order for people ranked by message count.
+    /// The order people get colors in, most distinct first.
+    public static let peopleOrder: [PersonColor] = [.coral, .blue, .leaf, .grape, .sun, .berry, .cocoa, .slate, .olive, .lavender, .forest, .peach]
+
+    /// One per sidebar screen, so a screen never shares a color with a person.
+    public static let screenOrder: [PersonColor] = [.tangerine, .pink, .teal, .sky, .lime]
+
+    /// Assignment order for people ranked by message count. Only a world
+    /// bigger than the whole palette borrows the screens' colors, then repeats.
     public static func forRank(_ rank: Int) -> PersonColor {
-        let order: [PersonColor] = [.coral, .blue, .leaf, .grape, .sun]
+        let order = peopleOrder + screenOrder
         return order[((rank % order.count) + order.count) % order.count]
+    }
+}
+
+extension Array where Element == Person {
+    /// Gives everyone included a color no one else included has (left-out
+    /// people come after, and only repeat once the palette runs out). Earlier
+    /// people keep their color first; a clash moves the later person.
+    public func withDistinctColors() -> [Person] {
+        let palette = PersonColor.peopleOrder + PersonColor.screenOrder
+        var result = self
+        var taken: Set<PersonColor> = []
+        for included in [true, false] {
+            for index in result.indices where result[index].included == included {
+                if taken.contains(result[index].color), let free = palette.first(where: { !taken.contains($0) }) {
+                    result[index].color = free
+                }
+                taken.insert(result[index].color)
+            }
+        }
+        return result
     }
 }
 
@@ -93,8 +123,10 @@ public struct Person: StoredRecord, Hashable, Sendable {
             : displayName
     }
 
+    /// The letter on their avatar; "#" for someone known only by a number.
     public var initial: String {
-        String(displayName.first.map { Character($0.uppercased()) } ?? "?")
+        guard let letter = displayName.first(where: \.isLetter) else { return "#" }
+        return letter.uppercased()
     }
 
     /// "Maya Okafor", or the display name when Contacts didn't give us more.

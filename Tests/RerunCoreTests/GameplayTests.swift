@@ -226,7 +226,8 @@ final class WorldBuilderTests: XCTestCase {
 
         let people = try builder.survey()
         XCTAssertEqual(people.count, 1)
-        XCTAssertEqual(people[0].displayName, "…0100")
+        XCTAssertEqual(people[0].displayName, "(415) 555-0100")
+        XCTAssertEqual(people[0].initial, "#")
         XCTAssertTrue(people[0].included)
 
         var phases: [WorldBuildProgress.Phase] = []
@@ -246,10 +247,37 @@ final class WorldBuilderTests: XCTestCase {
     }
 
     func testNoConversations() throws {
-        let source = try makeChatDB(messages: 10)
+        let source = try makeChatDB(messages: 4)
         let store = try RecordStore(url: directory.appendingPathComponent("rerun.sqlite"))
         XCTAssertThrowsError(try WorldBuilder(store: store, source: source).survey()) { error in
             XCTAssertEqual(error as? WorldBuildError, .noConversations)
         }
+    }
+
+    /// Everyone you text is offered — not just the biggest dozen — and a
+    /// contact's phone and email threads become one person.
+    func testSurveyOffersEveryConversation() throws {
+        struct Names: ContactNameResolving {
+            func name(forHandle handle: String) -> String? { handle == "+14155550100" || handle == "maya@icloud.com" ? "Maya Okafor" : nil }
+            func contactID(forHandle handle: String) -> String? { name(forHandle: handle) == nil ? nil : "maya" }
+        }
+        func chat(_ id: Int64, _ handle: String, _ count: Int) -> ChatSummary {
+            ChatSummary(id: id, guid: "g\(id)", identifier: handle, displayName: nil, isGroup: false, participantHandles: [handle], messageCount: count, lastMessageAt: nil)
+        }
+        var chats = (0..<30).map { index in chat(Int64(index + 10), "+1212555" + String(format: "%04d", index), 12 + index) }
+        chats.append(chat(1, "+14155550100", 900))
+        chats.append(chat(2, "maya@icloud.com", 300))
+        chats.append(chat(3, "+13125550000", 3))
+
+        let store = try RecordStore(url: directory.appendingPathComponent("rerun.sqlite"))
+        let people = WorldBuilder(store: store, names: Names()).mergePeople(chats, existing: [])
+        XCTAssertEqual(people.count, 31, "30 threads + Maya, minus the 3-text one")
+        XCTAssertEqual(people[0].displayName, "Maya")
+        XCTAssertEqual(people[0].messageCount, 1200, "her phone and email threads, merged")
+        XCTAssertEqual(Set(people[0].chatIDs), [1, 2])
+        XCTAssertEqual(people[1].displayName, "(212) 555-0029", "strangers show up by number")
+        XCTAssertEqual(people.filter(\.included).count, 5)
+        XCTAssertEqual(Set(people.prefix(17).map(\.color)).count, 17, "no repeats until the palette runs out")
+        XCTAssertEqual(Set(people.map(\.id)).count, people.count)
     }
 }

@@ -27,8 +27,8 @@ public enum DemoWorld {
             isGroup: true, members: ["Theo", "Rafa", "Ana", "Kev"],
             color: .sun, messageCount: 41_337, momentCount: 304, since: day(2018, 2, 2)
         ),
-        Person(id: "sam", displayName: "Sam", relationship: "work friend", color: .coral, messageCount: 2_210, momentCount: 58, included: false),
-        Person(id: "mom", displayName: "Mom", relationship: "mostly sends “call me”", color: .blue, messageCount: 340, momentCount: 9, included: false),
+        Person(id: "sam", displayName: "Sam", relationship: "work friend", color: .berry, messageCount: 2_210, momentCount: 58, included: false),
+        Person(id: "mom", displayName: "Mom", relationship: "mostly sends “call me”", color: .slate, messageCount: 340, momentCount: 9, included: false),
     ]
 
     public static let moments: [Moment] = [

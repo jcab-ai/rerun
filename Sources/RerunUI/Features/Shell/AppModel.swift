@@ -22,14 +22,15 @@ public enum Screen: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The nav sticker's color.
+    /// The nav sticker's color — from the screens' own set, so the sidebar
+    /// never shows a screen and a person in the same color.
     public var color: PersonColor {
         switch self {
-        case .map: .coral
-        case .people: .blue
-        case .moments: .sun
-        case .notes: .grape
-        case .settings: .leaf
+        case .map: .tangerine
+        case .people: .pink
+        case .moments: .teal
+        case .notes: .sky
+        case .settings: .lime
         }
     }
 
@@ -127,6 +128,8 @@ public final class AppModel: ObservableObject {
                 notes = try store.all(ContextNote.self)
                 settings = stored ?? AppSettings(player: Self.defaultPlayer, hasCompletedOnboarding: true)
                 isSampleWorld = false
+                people = recolored(people)
+                relayout()
                 return
             }
             loadSampleWorld(keeping: stored)
@@ -369,6 +372,27 @@ public final class AppModel: ObservableObject {
         if personFilter == personID && !included { personFilter = nil }
         let person = people[index]
         persist { try $0.save(person) }
+        people = recolored(people)
+        relayout()
+    }
+
+    /// Redraws the map for whoever's included now. The sample world keeps
+    /// its hand-placed map.
+    private func relayout() {
+        guard !isSampleWorld else { return }
+        let fresh = WorldLayout().layout(people: people, moments: moments, momentCount: map.momentCount, since: map.since)
+        guard fresh != map else { return }
+        map = fresh
+        persist { try $0.save(fresh) }
+    }
+
+    /// Worlds built before the bigger palette (or someone newly included)
+    /// can have two people in one color; this fixes that and saves the change.
+    private func recolored(_ list: [Person]) -> [Person] {
+        let fixed = list.withDistinctColors()
+        let changed = zip(list, fixed).filter { $0.color != $1.color }.map(\.1)
+        if !changed.isEmpty { persist { try $0.save(changed) } }
+        return fixed
     }
 
     /// Size of rerun's own database on disk ("1.2 GB, local").
@@ -457,9 +481,16 @@ public final class AppModel: ObservableObject {
         }
     }
 
+    /// Back out of "Who's in your world?" and keep the world you have.
+    public func cancelChoosing() {
+        candidates = []
+        onboarding = nil
+    }
+
     public func setCandidate(_ id: String, included: Bool) {
         guard let index = candidates.firstIndex(where: { $0.id == id }) else { return }
         candidates[index].included = included
+        candidates = candidates.withDistinctColors()
     }
 
     /// Builds the world from the chosen candidates (or rescans with

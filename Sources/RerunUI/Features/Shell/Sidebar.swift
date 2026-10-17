@@ -16,7 +16,7 @@ struct Sidebar: View {
                 header
                 nav
                 people
-                Spacer(minLength: 0)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 privacyNote
             }
             .padding(Tokens.Metrics.sidebarPadding)
@@ -60,31 +60,37 @@ struct Sidebar: View {
             Text("PEOPLE")
                 .textStyle(Tokens.Typography.monoEyebrow)
                 .foregroundStyle(Tokens.Palette.pencil)
-            VStack(alignment: .leading, spacing: 7) {
-                ForEach(model.includedPeople.prefix(5)) { person in
-                    Button { model.openStoryline(person.id) } label: {
-                        HStack(spacing: Tokens.Space.sm) {
-                            Circle()
-                                .fill(person.color.fill)
-                                .frame(width: Tokens.Metrics.avatarSmall, height: Tokens.Metrics.avatarSmall)
-                                .padding(Tokens.Stroke.chip)
-                                .background(Circle().fill(Color.white))
-                                .shadow(Tokens.Shadows.avatar)
-                            Text(person.displayName)
-                                .textStyle(Tokens.Typography.personRow)
-                                .foregroundStyle(Tokens.Palette.ink)
-                                .lineLimit(1)
-                            Spacer(minLength: Tokens.Space.xs)
-                            Text(Self.compactCount(person.momentCount > 0 ? person.momentCount : person.messageCount))
-                                .textStyle(Tokens.Typography.monoCaption)
-                                .foregroundStyle(Tokens.Palette.pencil)
+            // Everyone included, scrolling once there are more than fit.
+            AdaptiveScroll(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(model.includedPeople) { person in
+                        Button { model.openStoryline(person.id) } label: {
+                            HStack(spacing: Tokens.Space.sm) {
+                                Circle()
+                                    .fill(person.color.fill)
+                                    .frame(width: Tokens.Metrics.avatarSmall, height: Tokens.Metrics.avatarSmall)
+                                    .padding(Tokens.Stroke.chip)
+                                    .background(Circle().fill(Color.white))
+                                    .shadow(Tokens.Shadows.avatar)
+                                Text(person.displayName)
+                                    .textStyle(Tokens.Typography.personRow)
+                                    .foregroundStyle(Tokens.Palette.ink)
+                                    .lineLimit(1)
+                                Spacer(minLength: Tokens.Space.xs)
+                                Text(Self.compactCount(person.momentCount > 0 ? person.momentCount : person.messageCount))
+                                    .textStyle(Tokens.Typography.monoCaption)
+                                    .foregroundStyle(Tokens.Palette.pencil)
+                            }
+                            .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .help("\(person.displayName)'s storyline")
                     }
-                    .buttonStyle(.plain)
-                    .help("\(person.displayName)'s storyline")
                 }
+                // Room for the avatars' shadows inside the scroll's clip.
+                .padding(4)
             }
+            .padding(-4)
         }
     }
 

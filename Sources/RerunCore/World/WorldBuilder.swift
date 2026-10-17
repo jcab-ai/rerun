@@ -29,11 +29,13 @@ public enum WorldBuildError: Error, Equatable {
 /// moments and the map. Reads a private copy of chat.db; writes only to
 /// rerun's own store. Excluded people are skipped before their texts are read.
 public struct WorldBuilder {
-    public var maxPeople = 12
+    /// Every conversation worth a place is offered; this only stops a huge
+    /// history from burying "Who's in your world?" in one-off threads.
+    public var maxPeople = 150
     /// How many of the biggest threads start out included.
     public var includedByDefault = 5
     /// Threads smaller than this aren't worth a place in the world.
-    public var minMessagesPerPerson = 50
+    public var minMessagesPerPerson = 10
 
     let store: RecordStore
     let names: ContactNameResolving
@@ -137,8 +139,10 @@ public struct WorldBuilder {
         return map
     }
 
-    /// One person per contact (their iMessage and SMS threads merged), one per
-    /// group chat; the biggest `maxPeople`, keeping ids and choices from earlier scans.
+    /// One person per conversation partner, straight from Messages — their
+    /// iMessage and SMS threads merged, and their phone and email threads too
+    /// when Contacts knows they're the same person — plus one per group chat.
+    /// Keeps ids and choices from earlier scans.
     func mergePeople(_ chats: [ChatSummary], existing: [Person]) -> [Person] {
         var direct: [String: (handles: Set<String>, chats: [ChatSummary])] = [:]
         var groups: [ChatSummary] = []
@@ -146,7 +150,8 @@ public struct WorldBuilder {
             if chat.isGroup {
                 groups.append(chat)
             } else if let handle = chat.participantHandles.first ?? Optional(chat.identifier), !handle.isEmpty {
-                let key = HandleFormat.phoneKey(handle) ?? handle.lowercased()
+                let key = names.contactID(forHandle: handle).map { "contact:\($0)" }
+                    ?? HandleFormat.phoneKey(handle) ?? handle.lowercased()
                 direct[key, default: ([], [])].handles.insert(handle)
                 direct[key, default: ([], [])].chats.append(chat)
             }
@@ -162,7 +167,7 @@ public struct WorldBuilder {
             let fullName = handles.lazy.compactMap(names.name(forHandle:)).first
             let threads = entry.chats.sorted { $0.messageCount > $1.messageCount }
             return Person(
-                displayName: fullName.map { $0.split(separator: " ").first.map(String.init) ?? $0 } ?? HandleFormat.fallbackName(handles[0]),
+                displayName: fullName.map { $0.split(separator: " ").first.map(String.init) ?? $0 } ?? HandleFormat.readableName(handles[0]),
                 fullName: fullName,
                 handles: handles,
                 chatIDs: threads.map(\.id),
@@ -189,11 +194,15 @@ public struct WorldBuilder {
             .sorted { $0.messageCount > $1.messageCount }
             .prefix(maxPeople)
 
-        return ranked.enumerated().map { rank, person in
-            var person = person
+        var merged: [Person] = []
+        // Each earlier person carries over once, even if their threads split.
+        var claimed: Set<String> = []
+        for (rank, candidate) in ranked.enumerated() {
+            var person = candidate
             person.color = .forRank(rank)
             person.included = rank < includedByDefault
-            if let previous = existing.first(where: { !Set($0.chatIDs).isDisjoint(with: person.chatIDs) }) {
+            if let previous = existing.first(where: { !claimed.contains($0.id) && !Set($0.chatIDs).isDisjoint(with: person.chatIDs) }) {
+                claimed.insert(previous.id)
                 person.id = previous.id
                 person.included = previous.included
                 person.color = previous.color
@@ -201,7 +210,8 @@ public struct WorldBuilder {
                 person.momentCount = previous.momentCount
                 person.since = previous.since
             }
-            return person
+            merged.append(person)
         }
+        return merged.withDistinctColors()
     }
 }

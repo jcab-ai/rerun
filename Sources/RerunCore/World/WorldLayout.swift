@@ -4,8 +4,10 @@ import Foundation
 /// their color, their best moments become stickers, the rest collapse into a
 /// "+N" hub. Deterministic, so the same world always lays out the same way.
 public struct WorldLayout {
-    public var maxPeople = 5
     public var maxNodesPerPerson = 3
+    /// Stickers the map holds comfortably. Everyone included gets at least
+    /// one; the biggest threads get the spares, up to `maxNodesPerPerson`.
+    public var nodeBudget = 15
     /// Where the first slice starts: upper left, like the mockup.
     public var startAngle = -150.0
     public var radiusX = 380.0
@@ -17,15 +19,15 @@ public struct WorldLayout {
         let byPerson = Dictionary(grouping: moments, by: \.primaryPersonID)
         let ranked = people
             .filter { $0.included && !(byPerson[$0.id] ?? []).isEmpty }
-            .sorted { $0.messageCount > $1.messageCount }
-            .prefix(maxPeople)
+            .sorted { ($0.messageCount, $1.id) > ($1.messageCount, $0.id) }
         let featuredID = moments.filter { $0.lastPlayedAt != nil }.max { $0.lastPlayedAt! < $1.lastPlayedAt! }?.id
+        let quotas = stickerQuotas(available: ranked.map { byPerson[$0.id]?.count ?? 0 })
 
-        let groups: [(person: Person, visible: [Moment], hidden: Int)] = ranked.map { person in
+        let groups: [(person: Person, visible: [Moment], hidden: Int)] = zip(ranked, quotas).map { person, quota in
             let theirs = (byPerson[person.id] ?? []).sorted {
                 ($0.id == featuredID ? 1 : 0, $0.playCount, $0.messageCount) > ($1.id == featuredID ? 1 : 0, $1.playCount, $1.messageCount)
             }
-            let visible = Array(theirs.prefix(maxNodesPerPerson)).sorted { $0.date < $1.date }
+            let visible = Array(theirs.prefix(quota)).sorted { $0.date < $1.date }
             return (person, visible, theirs.count - visible.count)
         }
         let total = max(1, groups.reduce(0) { $0 + $1.visible.count })
@@ -79,6 +81,23 @@ public struct WorldLayout {
         }
 
         return WorldMap(nodes: nodes, hubs: hubs, links: links, momentCount: momentCount ?? moments.count, since: since)
+    }
+
+    /// How many stickers each person gets, biggest thread first: one each,
+    /// then the spare budget handed out a round at a time.
+    func stickerQuotas(available: [Int]) -> [Int] {
+        var quotas = available.map { min(1, $0) }
+        var spare = max(0, nodeBudget - quotas.reduce(0, +))
+        var handedOut = true
+        while spare > 0 && handedOut {
+            handedOut = false
+            for index in quotas.indices where spare > 0 && quotas[index] < min(maxNodesPerPerson, available[index]) {
+                quotas[index] += 1
+                spare -= 1
+                handedOut = true
+            }
+        }
+        return quotas
     }
 
     /// Control point for a gently curved line: the midpoint pushed sideways.

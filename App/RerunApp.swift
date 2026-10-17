@@ -63,6 +63,10 @@ struct WorldCommands: Commands {
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
             .disabled(model.onboarding != nil)
+
+            Button("Choose People…") { model.requestMessagesAccess() }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+                .disabled(model.isSampleWorld || model.onboarding != nil)
         }
     }
 }

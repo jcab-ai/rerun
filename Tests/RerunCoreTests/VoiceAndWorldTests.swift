@@ -97,11 +97,11 @@ final class WorldLayoutTests: XCTestCase {
         let second = WorldLayout().layout(people: people.reversed(), moments: moments.reversed())
         XCTAssertEqual(first.nodes.map(\.momentID).sorted(), second.nodes.map(\.momentID).sorted())
 
-        XCTAssertEqual(first.nodes.count, 15, "5 people × 3 stickers")
-        XCTAssertEqual(first.hubs.count, 5)
-        XCTAssertTrue(first.hubs.allSatisfy { $0.hiddenCount == 2 })
-        XCTAssertEqual(first.links.count, 5)
-        XCTAssertFalse(first.nodes.contains { $0.momentID.hasPrefix("p5") }, "only the top five people get a slice")
+        XCTAssertEqual(first.nodes.count, 15, "the sticker budget, spread over all 6 people")
+        XCTAssertEqual(first.hubs.count, 6)
+        XCTAssertEqual(first.hubs.compactMap(\.hiddenCount).sorted(), [2, 2, 2, 3, 3, 3], "the biggest threads get the spare stickers")
+        XCTAssertEqual(first.links.count, 6)
+        XCTAssertTrue(first.nodes.contains { $0.momentID.hasPrefix("p5") }, "everyone included gets a slice")
 
         for node in first.nodes {
             XCTAssertGreaterThanOrEqual(node.position.x - node.width / 2, 0)
@@ -110,6 +110,34 @@ final class WorldLayoutTests: XCTestCase {
             XCTAssertTrue((2...6).contains(abs(node.tilt)))
         }
         XCTAssertEqual(first.node(for: "p0-m0")?.width, 178, "the last played moment is featured")
+    }
+
+    func testBigWorldsStillShowEveryone() {
+        let people = (0..<20).map { Person(id: "p\($0)", displayName: "P\($0)", color: .forRank($0), messageCount: 5000 - $0 * 100) }
+        let moments = people.flatMap { person in
+            (0..<4).map { Moment(id: "\(person.id)-m\($0)", title: "M", date: Date(timeIntervalSinceReferenceDate: Double($0) * 1e6), primaryPersonID: person.id, tag: .everyday) }
+        }
+        let map = WorldLayout().layout(people: people, moments: moments)
+        XCTAssertEqual(map.nodes.count, 20, "one sticker each once the budget runs out")
+        XCTAssertEqual(map.hubs.count, 20, "the rest wait behind a +N hub")
+    }
+
+    func testStickerQuotasFavorBiggestThreads() {
+        XCTAssertEqual(WorldLayout().stickerQuotas(available: [5, 5, 5, 5, 5, 5]), [3, 3, 3, 2, 2, 2])
+        XCTAssertEqual(WorldLayout().stickerQuotas(available: [1, 9]), [1, 3])
+        XCTAssertEqual(WorldLayout().stickerQuotas(available: []), [])
+    }
+
+    func testIncludedPeopleNeverShareAColor() {
+        var people = (0..<14).map { Person(id: "p\($0)", displayName: "P\($0)", color: PersonColor.peopleOrder[$0 % 5], included: $0 < 12) }
+        people = people.withDistinctColors()
+        let included = people.filter(\.included).map(\.color)
+        XCTAssertEqual(Set(included).count, 12)
+        XCTAssertTrue(included.allSatisfy { PersonColor.peopleOrder.contains($0) }, "screens' colors are only borrowed past 12")
+        XCTAssertEqual(people[0].color, .coral, "the first person keeps theirs")
+        XCTAssertEqual(Set(people.map(\.color)).count, 14)
+        XCTAssertTrue(Set(PersonColor.peopleOrder).isDisjoint(with: PersonColor.screenOrder))
+        XCTAssertEqual(Set(PersonColor.peopleOrder + PersonColor.screenOrder), Set(PersonColor.allCases))
     }
 
     func testDemoWorldIsConsistent() {

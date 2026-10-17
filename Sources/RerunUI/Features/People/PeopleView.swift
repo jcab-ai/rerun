@@ -34,7 +34,13 @@ struct PeopleView: View {
                                     .font(Tokens.Typeface.caveat(bold: false).font(size: 19))
                                     .foregroundStyle(Tokens.Palette.pencil)
                             }
-                            strips(excluded, included: false)
+                            strips(Array(excluded.prefix(Self.leftOutShown)), included: false)
+                            if excluded.count > Self.leftOutShown {
+                                Text("+ \(excluded.count - Self.leftOutShown) more conversations — bring anyone back from Settings")
+                                    .font(Tokens.Typeface.caveat(bold: false).font(size: 20))
+                                    .foregroundStyle(Tokens.Palette.pencil)
+                                    .rotationEffect(.degrees(-1.5))
+                            }
                         }
                     }
                 }
@@ -42,6 +48,9 @@ struct PeopleView: View {
             }
         }
     }
+
+    /// Left-out strips shown before the rest collapse into a count.
+    private static let leftOutShown = 6
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 14) {

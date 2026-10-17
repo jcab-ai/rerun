@@ -1,7 +1,9 @@
 import RerunCore
 import SwiftUI
 
-/// 03 — "Who's in your world?": polaroid strips of the biggest threads, tap to include.
+/// 03 — "Who's in your world?": a polaroid strip for every conversation in
+/// Messages, biggest first, tap to include. Search finds anyone by name,
+/// group member or number.
 struct ChoosePeopleView: View {
     @EnvironmentObject private var model: AppModel
     @State private var query = ""
@@ -16,9 +18,20 @@ struct ChoosePeopleView: View {
 
     private var shown: [Person] {
         let trimmed = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !trimmed.isEmpty else { return Array(candidates.prefix(7)) }
-        return candidates.filter { $0.displayName.lowercased().contains(trimmed) || ($0.fullName?.lowercased().contains(trimmed) ?? false) }
+        guard !trimmed.isEmpty else { return candidates }
+        let digits = trimmed.filter(\.isNumber)
+        return candidates.filter { person in
+            person.displayName.lowercased().contains(trimmed)
+                || (person.fullName?.lowercased().contains(trimmed) ?? false)
+                || person.members.contains { $0.lowercased().contains(trimmed) }
+                || person.handles.contains { handle in
+                    handle.lowercased().contains(trimmed) || (digits.count >= 3 && handle.filter(\.isNumber).contains(digits))
+                }
+        }
     }
+
+    /// How many strips fit across before the row scrolls.
+    private static let stripsAcross = 7
 
     private var chosen: [Person] { candidates.filter(\.included) }
 
@@ -45,7 +58,8 @@ struct ChoosePeopleView: View {
 
     /// The smallest shown thread, if it's small enough to warn about.
     private var quietest: Person? {
-        guard query.isEmpty, let last = shown.last, shown.count > 3, last.messageCount < 1_000 else { return nil }
+        let visible = shown.prefix(Self.stripsAcross)
+        guard query.isEmpty, let last = visible.last, visible.count > 3, last.messageCount < 1_000 else { return nil }
         return last
     }
 
@@ -79,6 +93,28 @@ struct ChoosePeopleView: View {
     }
 
     private var strips: some View {
+        AdaptiveScroll(axes: .horizontal) {
+            stripRow
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .overlay(alignment: .bottomTrailing) {
+            if shown.count > Self.stripsAcross {
+                Text("\(shown.count - Self.stripsAcross) more conversations — scroll →")
+                    .font(Tokens.Typeface.caveat(bold: false).font(size: 20))
+                    .foregroundStyle(Tokens.Palette.pencil)
+                    .rotationEffect(.degrees(-2))
+                    .padding(.trailing, 48)
+                    .allowsHitTesting(false)
+            } else if shown.isEmpty {
+                Text("no one by that name in Messages")
+                    .font(Tokens.Typeface.caveat(bold: false).font(size: 22))
+                    .foregroundStyle(Tokens.Palette.pencil)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private var stripRow: some View {
         HStack(alignment: .top, spacing: 26) {
             ForEach(Array(shown.enumerated()), id: \.element.id) { index, person in
                 Button {
@@ -109,8 +145,7 @@ struct ChoosePeopleView: View {
                 .help(person.included ? "Leave \(person.displayName) out" : "Include \(person.displayName)")
             }
         }
-        .padding(EdgeInsets(top: 34, leading: 56, bottom: 0, trailing: 56))
-        .frame(maxWidth: .infinity)
+        .padding(EdgeInsets(top: 34, leading: 56, bottom: 30, trailing: 56))
     }
 
     private func countLabel(_ person: Person) -> String {
@@ -132,6 +167,12 @@ struct ChoosePeopleView: View {
                     .foregroundStyle(Tokens.Palette.sun)
             }
             Spacer()
+            if !model.isSampleWorld {
+                Button("keep my world as is") { model.cancelChoosing() }
+                    .buttonStyle(UnderlineLinkButtonStyle(text: Tokens.TextStyle(.fredoka(.medium), 16), color: .white))
+                    .keyboardShortcut(.cancelAction)
+                    .padding(.trailing, 14)
+            }
             Button("Build my world →") { Task { await model.buildWorld() } }
                 .buttonStyle(PillButtonStyle(fill: Tokens.Palette.sun, foreground: Tokens.Palette.ink, border: .white, text: Tokens.TextStyle(.fredoka(.semibold), 18), padding: EdgeInsets(top: 13, leading: 26, bottom: 13, trailing: 26)))
                 .disabled(chosen.isEmpty)
