@@ -121,27 +121,36 @@ struct MomentDetailView: View {
                 Button { model.play(moment) } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "play.fill").font(.system(size: 18, weight: .black))
-                        Text(moment.hasBeenPlayed ? "play again" : "play")
+                        Text("play")
                     }
+                    .fixedSize()
                 }
                 .buttonStyle(HardShadowButtonStyle(text: Tokens.Typography.buttonPlay))
                 .keyboardShortcut(.defaultAction)
                 .help(model.canPlay(moment) ? "Play \(moment.title)" : "Pick a story model in Settings first")
+                .overlay(alignment: .topTrailing) {
+                    // A tally sticker slapped on the button once it's been played.
+                    if moment.playCount > 0 {
+                        Text("played \(moment.playCount)×")
+                            .font(Tokens.Typeface.caveat(bold: true).font(size: 16))
+                            .foregroundStyle(Tokens.Palette.ink)
+                            .fixedSize()
+                            .padding(.vertical, 2)
+                            .padding(.horizontal, 8)
+                            .background(Capsule().fill(Tokens.Palette.sun))
+                            .overlay(Capsule().strokeBorder(Color.white, lineWidth: 2))
+                            .rotationEffect(.degrees(9))
+                            .offset(x: 26, y: -14)
+                            .allowsHitTesting(false)
+                    }
+                }
 
                 Button("+ add context") {
                     model.openNotes(personID: moment.primaryPersonID, momentID: moment.id)
                 }
                 .buttonStyle(UnderlineLinkButtonStyle())
-
-                if moment.playCount > 0 {
-                    Text("played \(moment.playCount)×")
-                        .font(Tokens.Typeface.caveat(bold: true).font(size: 17))
-                        .foregroundStyle(Tokens.Palette.ink)
-                        .padding(.vertical, 3)
-                        .padding(.horizontal, 9)
-                        .background(Capsule().fill(Tokens.Palette.sun))
-                        .rotationEffect(.degrees(8))
-                }
+                .padding(.leading, moment.playCount > 0 ? 18 : 0)
+                .fixedSize()
             }
         }
     }
@@ -211,7 +220,8 @@ struct MomentDetailView: View {
                         PersonPill(
                             initial: person.isGroup ? "🦆" : person.initial,
                             name: person.displayName,
-                            caption: model.voice(person.id)?.summary,
+                            // Big casts drop the captions so everyone fits on one row.
+                            caption: moment.personIDs.count > 2 ? nil : model.voice(person.id)?.summary,
                             color: person.color.fill
                         )
                     }
@@ -260,6 +270,7 @@ struct PersonPill: View {
                 Text(name)
                     .textStyle(Tokens.Typography.navItemActive)
                     .foregroundStyle(Tokens.Palette.ink)
+                    .lineLimit(1)
                 if let caption, !caption.isEmpty {
                     Text(caption)
                         .font(Tokens.Typeface.caveat(bold: false).font(size: 16))

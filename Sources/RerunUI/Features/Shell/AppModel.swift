@@ -166,9 +166,12 @@ public final class AppModel: ObservableObject {
     /// People in the world, in stored order (biggest threads first after a scan).
     public var includedPeople: [Person] { people.filter(\.included) }
 
-    /// The three biggest threads, shown as filter chips, in sidebar order.
+    /// The three people with the most moments, shown as filter chips, in sidebar order.
     public var chipPeople: [Person] {
-        let top = Set(includedPeople.sorted { $0.messageCount > $1.messageCount }.prefix(3).map(\.id))
+        let ranked = includedPeople.sorted {
+            ($0.momentCount, $0.messageCount) > ($1.momentCount, $1.messageCount)
+        }
+        let top = Set(ranked.prefix(3).map(\.id))
         return includedPeople.filter { top.contains($0.id) }
     }
 

@@ -70,6 +70,11 @@ struct BoardingPassProp: View {
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(.trailing, 74)
+        }
+        .frame(width: width)
+        // The stub is an overlay so it matches the pass's height instead of stretching it.
+        .overlay(alignment: .trailing) {
             VStack {
                 labelled("SEAT", value(.seat, "1A"), size: 16, alignment: .center)
                 Spacer(minLength: 6)
@@ -80,7 +85,6 @@ struct BoardingPassProp: View {
             .frame(width: 74)
             .overlay(alignment: .leading) { Perforation(color: Tokens.Palette.perforation) }
         }
-        .frame(width: width)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .topLeading) {
@@ -138,13 +142,16 @@ struct MiniBoardingPass: View {
                         .padding(.vertical, 10)
                 }
             }
+            .padding(.trailing, title == nil ? 34 : 30)
+        }
+        .frame(width: width)
+        .overlay(alignment: .trailing) {
             Barcode()
                 .padding(.vertical, 10)
                 .padding(.horizontal, 7)
                 .frame(width: title == nil ? 34 : 30)
                 .overlay(alignment: .leading) { Perforation(color: Tokens.Palette.perforation) }
         }
-        .frame(width: width)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(alignment: .top) { PushPin(size: title == nil ? 22 : 20).offset(y: -10) }
@@ -181,9 +188,9 @@ struct ReceiptProp: View {
                 .foregroundStyle(Tokens.Palette.pencil)
                 .frame(maxWidth: .infinity)
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .topTrailing) {
             if let stamp = evidence[.stamp] {
-                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: -12).offset(x: 10, y: -40)
+                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: 12).offset(x: 18, y: 26)
             }
         }
         .overlay(alignment: .topLeading) { PaperClip().rotationEffect(.degrees(-8)).offset(x: 18, y: -16) }

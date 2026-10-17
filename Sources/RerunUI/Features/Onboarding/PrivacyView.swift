@@ -18,18 +18,23 @@ struct PrivacyView: View {
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 18) {
             StepPips(step: 1)
-            VStack(alignment: .leading, spacing: 2) {
+            // Three stacked lines rather than one wrapping Text so "Right here,"
+            // can carry its highlighter swipe; the negative spacing gets
+            // Fredoka's tall natural line box down to the mockup's 1.02.
+            VStack(alignment: .leading, spacing: -8) {
                 Text("rerun reads your")
                 HStack(spacing: 10) {
                     Text("Messages.")
                     Text("Right here,")
-                        .padding(.horizontal, 8)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Tokens.Palette.sun))
+                        .padding(.horizontal, 6)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Tokens.Palette.sun).padding(.vertical, 6))
                         .rotationEffect(.degrees(-1.5))
                     Text("on")
                 }
                 Text("this Mac.")
             }
+            .lineLimit(1)
+            .fixedSize()
             .textStyle(Tokens.Typography.headline)
             .foregroundStyle(Tokens.Palette.ink)
 
@@ -86,7 +91,7 @@ struct PrivacyView: View {
 
             ReceiptPaper(width: 290, fontSize: 12, lineHeight: 1.75, padding: EdgeInsets(top: 20, leading: 22, bottom: 34, trailing: 22), teeth: 8) {
                 Text("PRIVACY RECEIPT").fontWeight(.bold).tracking(2).frame(maxWidth: .infinity)
-                Text("rerun · \(Host.current().localizedName ?? "this Mac")")
+                Text("rerun · \(machineName)")
                     .font(Tokens.Typeface.mono(bold: false).font(size: 10))
                     .foregroundStyle(Tokens.Palette.pencil)
                     .lineLimit(1)
@@ -118,7 +123,7 @@ struct PrivacyView: View {
                 .rotationEffect(.degrees(8))
                 .place(left: 470, top: 84)
 
-            Postmark(top: "RERUN", middle: "LOCAL", bottom: "ONLY · \(Calendar.current.component(.year, from: Date()))", color: Tokens.Palette.leaf)
+            Postmark(top: "RERUN", middle: "LOCAL", bottom: "ONLY", color: Tokens.Palette.leaf)
                 .rotationEffect(.degrees(-14))
                 .place(left: 220, top: 640)
         }
@@ -137,5 +142,12 @@ struct PrivacyView: View {
             Spacer()
             Text(value)
         }
+    }
+
+    /// "Jules's MacBook Pro" when the Mac has a proper name; build machines
+    /// and bare hostnames get "this Mac (Jules)" instead.
+    private var machineName: String {
+        if let name = Host.current().localizedName, name.contains(" ") { return name }
+        return "this Mac (\(model.player.name))"
     }
 }

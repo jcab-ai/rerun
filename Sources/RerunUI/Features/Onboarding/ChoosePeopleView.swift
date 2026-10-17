@@ -36,9 +36,9 @@ struct ChoosePeopleView: View {
                     .textStyle(Tokens.TextStyle(.caveat(bold: false), 20, lineHeight: 1.05))
                     .foregroundStyle(Tokens.Palette.pencil)
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 180, alignment: .trailing)
+                    .frame(width: 230, alignment: .trailing)
                     .rotationEffect(.degrees(-4))
-                    .place(right: 40, top: 146)
+                    .place(right: 40, top: 206)
             }
         }
     }
@@ -69,9 +69,9 @@ struct ChoosePeopleView: View {
                     .foregroundStyle(Tokens.Palette.ink)
             }
             .font(Tokens.Typeface.fredoka(.regular).font(size: 15))
+            .frame(width: 222, alignment: .leading)
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
-            .frame(width: 220)
             .background(Capsule().fill(Color.white))
             .overlay(Capsule().strokeBorder(Tokens.Palette.ink, lineWidth: Tokens.Stroke.chip))
         }

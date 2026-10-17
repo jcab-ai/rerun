@@ -38,7 +38,7 @@ final class VoiceProfilerTests: XCTestCase {
         XCTAssertEqual(profile.signOff, "- Dad")
         XCTAssertEqual(profile.terminalPeriodRate, 1)
         XCTAssertEqual(profile.lowercaseRate, 0)
-        XCTAssertTrue(profile.summary.contains("full stops. always."))
+        XCTAssertTrue(profile.summary.contains("full stops always"))
         XCTAssertTrue(profile.promptDescription(name: "Dad", includeExamples: true).contains("signs off with \"- Dad\""))
     }
 

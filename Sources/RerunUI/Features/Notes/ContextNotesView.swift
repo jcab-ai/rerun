@@ -41,7 +41,7 @@ struct ContextNotesView: View {
         draft = ""
         if let moment = model.notesMomentID {
             pinnedMoments = [moment]
-            pinToPerson = false
+            pinToPerson = model.notesPersonID != nil
         } else {
             pinnedMoments = []
             pinToPerson = true

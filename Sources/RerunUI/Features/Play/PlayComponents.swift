@@ -85,9 +85,7 @@ struct PhoneScreen: View {
     @ViewBuilder
     private var thread: some View {
         if isRenderingSnapshot {
-            messages
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            ScrollStandIn(axes: .vertical, anchor: .bottom) { messages }
                 .clipped()
         } else {
             scrollingThread

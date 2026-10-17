@@ -403,8 +403,11 @@ extension Tokens {
 
 extension View {
     /// Applies a mockup box-shadow. SwiftUI's radius is about half the CSS blur.
+    /// The view is flattened first so the shadow is cast by its outline, like
+    /// CSS, rather than by every piece of text inside it.
     public func shadow(_ token: Tokens.Shadow) -> some View {
-        shadow(color: token.color, radius: token.blur / 2, x: token.x, y: token.y)
+        compositingGroup()
+            .shadow(color: token.color, radius: token.blur / 2, x: token.x, y: token.y)
     }
 
     public func shadows(_ tokens: [Tokens.Shadow]) -> some View {

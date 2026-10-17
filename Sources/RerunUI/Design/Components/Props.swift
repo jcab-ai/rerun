@@ -8,8 +8,8 @@ extension View {
     /// Pins a view to edges of its container, like CSS absolute positioning.
     /// Apply rotation before this so it turns around its own center.
     public func place(left: CGFloat? = nil, right: CGFloat? = nil, top: CGFloat? = nil, bottom: CGFloat? = nil) -> some View {
-        let horizontal: HorizontalAlignment = right != nil && left == nil ? .trailing : .leading
-        let vertical: VerticalAlignment = bottom != nil && top == nil ? .bottom : .top
+        let horizontal: HorizontalAlignment = left != nil ? .leading : (right != nil ? .trailing : .center)
+        let vertical: VerticalAlignment = top != nil ? .top : (bottom != nil ? .bottom : .center)
         return padding(EdgeInsets(top: top ?? 0, leading: left ?? 0, bottom: bottom ?? 0, trailing: right ?? 0))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: Alignment(horizontal: horizontal, vertical: vertical))
     }
@@ -104,10 +104,10 @@ public struct ReceiptLine: View {
 
     public var body: some View {
         HStack(spacing: 4) {
-            Text(label).lineLimit(1)
+            Text(label).lineLimit(1).layoutPriority(1)
             if let amount {
-                DottedLeader().frame(height: 2).padding(.top, 6)
-                Text(amount)
+                DottedLeader().frame(minWidth: 6, maxHeight: 2).padding(.top, 6)
+                Text(amount).fixedSize()
             }
         }
         .fontWeight(bold ? .bold : .regular)

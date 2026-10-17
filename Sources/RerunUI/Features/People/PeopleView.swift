@@ -272,7 +272,7 @@ struct StorylineView: View {
     private func style(for moment: Moment, index: Int) -> StorylineCard.Style {
         if moment.evidence?.kind == .boardingPass { return .boardingPass }
         if moment.evidence?.kind == .receipt && moment.photoCaption == nil { return .receipt }
-        if moment.stat != nil || moment.tagline != nil { return .outlined }
+        if moment.stat != nil { return .outlined }
         if moment.quote != nil && moment.evidence == nil && moment.photoCaption == nil { return .note }
         // Filled stickers take turns through the palette, so a storyline isn't one color.
         return .filled(PersonColor.allCases[(index + 2) % PersonColor.allCases.count])

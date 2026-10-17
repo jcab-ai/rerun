@@ -107,7 +107,7 @@ public struct VoiceProfile: StoredRecord, Hashable, Sendable {
     public var traits: [String] {
         var traits: [String] = []
         if lowercaseRate > 0.8 { traits.append("lowercase") }
-        if terminalPeriodRate > 0.5 { traits.append("full stops. always.") }
+        if terminalPeriodRate > 0.5 { traits.append("full stops always") }
         if signOff != nil { traits.append("signs every text") }
         if shoutRate > 0.08 && burstSize > 1.8 {
             traits.append("panics in bursts")
