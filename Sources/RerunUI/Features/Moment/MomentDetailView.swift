@@ -228,7 +228,8 @@ struct MomentDetailView: View {
                     .buttonStyle(LiftOnHoverStyle())
                     .rotationEffect(.degrees(Tokens.Tilt.chipStarring[index % 2]))
                 }
-                PersonPill(initial: "you", name: model.player.name, caption: nil, color: Tokens.Palette.ink)
+                // In a crowd, "you" is just the avatar so everyone else's name fits.
+                PersonPill(initial: "you", name: moment.personIDs.count > 1 ? "" : model.player.name, caption: nil, color: Tokens.Palette.ink)
                     .rotationEffect(.degrees(Tokens.Tilt.chipStarring[1]))
             }
         }
@@ -266,22 +267,24 @@ struct PersonPill: View {
                 .background(Circle().fill(color))
                 .overlay(Circle().strokeBorder(Color.white, lineWidth: 3))
                 .background(Circle().fill(color).padding(-1.5))
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name)
-                    .textStyle(Tokens.Typography.navItemActive)
-                    .foregroundStyle(Tokens.Palette.ink)
-                    .lineLimit(1)
-                if let caption, !caption.isEmpty {
-                    Text(caption)
-                        .font(Tokens.Typeface.caveat(bold: false).font(size: 16))
-                        .foregroundStyle(Tokens.Palette.pencil)
+            if !name.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(name)
+                        .textStyle(Tokens.Typography.navItemActive)
+                        .foregroundStyle(Tokens.Palette.ink)
                         .lineLimit(1)
+                    if let caption, !caption.isEmpty {
+                        Text(caption)
+                            .font(Tokens.Typeface.caveat(bold: false).font(size: 16))
+                            .foregroundStyle(Tokens.Palette.pencil)
+                            .lineLimit(1)
+                    }
                 }
             }
         }
         .padding(.vertical, 6)
         .padding(.leading, 6)
-        .padding(.trailing, 14)
+        .padding(.trailing, name.isEmpty ? 6 : 14)
         .background(Capsule().fill(Color.white))
         .shadow(Tokens.Shadows.pill)
     }

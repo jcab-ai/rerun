@@ -190,9 +190,9 @@ struct ReceiptProp: View {
                 .frame(maxWidth: .infinity)
         }
         .overlay(alignment: .bottomTrailing) {
-            // Thumped down over the total, the way a cashier would.
+            // Thumped down by the sign-off, clear of the total.
             if let stamp = evidence[.stamp] {
-                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: -12).offset(x: 16, y: -58)
+                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: -12).offset(x: 16, y: -6)
             }
         }
         .overlay(alignment: .topLeading) { PaperClip().rotationEffect(.degrees(-8)).offset(x: 18, y: -16) }
