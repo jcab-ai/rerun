@@ -1,0 +1,50 @@
+# XcodeGen spec for the macOS app bundle: `brew install xcodegen && xcodegen`
+# then open Rerun.xcodeproj. The app target is a thin shell over the Swift
+# package in this folder (RerunCore + RerunUI).
+name: Rerun
+options:
+  bundleIdPrefix: com.rerun
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  Rerun:
+    path: .
+targets:
+  Rerun:
+    type: application
+    platform: macOS
+    scheme: {}
+    sources:
+      - App
+    dependencies:
+      - package: Rerun
+        product: RerunCore
+      - package: Rerun
+        product: RerunUI
+    info:
+      path: Config/Info.plist
+      properties:
+        CFBundleDisplayName: rerun
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSApplicationCategoryType: public.app-category.simulation-games
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        NSContactsUsageDescription: rerun shows your contacts' names instead of phone numbers. Names stay on this Mac.
+        NSHumanReadableCopyright: Everything stays on this Mac.
+    entitlements:
+      path: Config/Rerun.entitlements
+      properties:
+        # Messages' library is outside any sandbox container; reading it needs
+        # Full Disk Access, which sandboxed apps can't use.
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rerun.app
+        PRODUCT_NAME: rerun
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        SWIFT_VERSION: "5.10"

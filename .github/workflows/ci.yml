@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  core-linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-24.04
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y libsqlite3-dev
+      - run: swift test
+
+  macos:
+    name: App build, tests & snapshots (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build package
+        run: swift build
+      - name: Test (writes screen snapshots)
+        env:
+          RERUN_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
+        run: swift test
+      - name: Build the .app with XcodeGen
+        run: |
+          set -o pipefail
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild -project Rerun.xcodeproj -scheme Rerun -configuration Debug \
+            -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build | tail -n 40
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots
+          path: snapshots/
+          if-no-files-found: ignore
