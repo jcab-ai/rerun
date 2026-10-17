@@ -32,9 +32,10 @@ targets += [
     .target(
         name: "RerunUI",
         dependencies: ["RerunCore"],
-        resources: [.copy("Resources/Fonts")]
+        resources: [.copy("Resources/Fonts"), .copy("Resources/Icon")]
     ),
-    .executableTarget(name: "RerunDevApp", dependencies: ["RerunCore", "RerunUI"], path: "App"),
+    // The asset catalog is for the Xcode app target; dev builds load the icon from RerunUI.
+    .executableTarget(name: "RerunDevApp", dependencies: ["RerunCore", "RerunUI"], path: "App", exclude: ["Assets.xcassets"]),
     .testTarget(name: "RerunUITests", dependencies: ["RerunCore", "RerunUI"]),
 ]
 #endif

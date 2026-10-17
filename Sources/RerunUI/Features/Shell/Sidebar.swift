@@ -40,10 +40,10 @@ struct Sidebar: View {
     private var nav: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
             ForEach(Screen.allCases) { screen in
-                NavItem(screen: screen, isActive: model.screen == screen && model.openMomentID == nil) {
-                    model.openMomentID = nil
-                    model.screen = screen
+                NavItem(screen: screen, isActive: model.screen == screen) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { model.go(to: screen) }
                 }
+                .keyboardShortcut(screen.shortcut, modifiers: .command)
             }
         }
     }
@@ -55,22 +55,27 @@ struct Sidebar: View {
                 .foregroundStyle(Tokens.Palette.pencil)
             VStack(alignment: .leading, spacing: 7) {
                 ForEach(model.includedPeople.prefix(5)) { person in
-                    HStack(spacing: Tokens.Space.sm) {
-                        Circle()
-                            .fill(person.color.fill)
-                            .frame(width: Tokens.Metrics.avatarSmall, height: Tokens.Metrics.avatarSmall)
-                            .padding(Tokens.Stroke.chip)
-                            .background(Circle().fill(Color.white))
-                            .shadow(Tokens.Shadows.avatar)
-                        Text(person.displayName)
-                            .textStyle(Tokens.Typography.personRow)
-                            .foregroundStyle(Tokens.Palette.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: Tokens.Space.xs)
-                        Text(Self.compactCount(person.messageCount))
-                            .textStyle(Tokens.Typography.monoCaption)
-                            .foregroundStyle(Tokens.Palette.pencil)
+                    Button { model.openStoryline(person.id) } label: {
+                        HStack(spacing: Tokens.Space.sm) {
+                            Circle()
+                                .fill(person.color.fill)
+                                .frame(width: Tokens.Metrics.avatarSmall, height: Tokens.Metrics.avatarSmall)
+                                .padding(Tokens.Stroke.chip)
+                                .background(Circle().fill(Color.white))
+                                .shadow(Tokens.Shadows.avatar)
+                            Text(person.displayName)
+                                .textStyle(Tokens.Typography.personRow)
+                                .foregroundStyle(Tokens.Palette.ink)
+                                .lineLimit(1)
+                            Spacer(minLength: Tokens.Space.xs)
+                            Text(Self.compactCount(person.momentCount > 0 ? person.momentCount : person.messageCount))
+                                .textStyle(Tokens.Typography.monoCaption)
+                                .foregroundStyle(Tokens.Palette.pencil)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .help("\(person.displayName)'s storyline")
                 }
             }
         }
@@ -80,6 +85,11 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             (Text("● ").foregroundStyle(Tokens.Palette.leaf) + Text("all processing on this mac"))
             Text(scanLine)
+            if model.isSampleWorld {
+                Button("scan my messages →") { model.onboarding = .privacy }
+                    .buttonStyle(UnderlineLinkButtonStyle(text: Tokens.TextStyle(.caveat(bold: true), 17), color: Tokens.Palette.coral))
+                    .padding(.top, 4)
+            }
         }
         .textStyle(Tokens.Typography.monoCaption.withLineHeight(1.5))
         .foregroundStyle(Tokens.Palette.pencilDark)

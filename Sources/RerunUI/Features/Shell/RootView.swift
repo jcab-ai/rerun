@@ -1,7 +1,8 @@
 import RerunCore
 import SwiftUI
 
-/// The main window: kraft title bar, torn sidebar, and the current screen.
+/// The main window: kraft title bar, then onboarding, the play table, or the
+/// torn sidebar with the current screen.
 public struct RootView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -9,15 +10,21 @@ public struct RootView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            WindowTitleBar(model.windowTitle)
-            ZStack(alignment: .topLeading) {
-                content
-                    .padding(.leading, Tokens.Metrics.sidebarWidth)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Sidebar()
-                    .frame(maxHeight: .infinity)
-                    .zIndex(2)
+            WindowTitleBar(model.windowTitle, background: model.onboarding == nil ? Tokens.Palette.kraft : Tokens.Palette.kraftLight)
+            ZStack {
+                if let step = model.onboarding {
+                    onboarding(step)
+                        .transition(.opacity)
+                } else if let session = model.playSession {
+                    PlayView(session: session)
+                        .id(session.id)
+                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                } else {
+                    main.transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.25), value: model.onboarding)
+            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: model.playSession?.id)
         }
         .background(Tokens.Palette.paper)
         .ignoresSafeArea()
@@ -31,55 +38,54 @@ public struct RootView: View {
     }
 
     @ViewBuilder
+    private func onboarding(_ step: OnboardingStep) -> some View {
+        switch step {
+        case .welcome: WelcomeView()
+        case .privacy: PrivacyView()
+        case .choosePeople: ChoosePeopleView()
+        case .building: BuildingWorldView()
+        case .locked, .noConversations: OnboardingProblemView(step: step)
+        }
+    }
+
+    private var main: some View {
+        ZStack(alignment: .topLeading) {
+            content
+                .padding(.leading, Tokens.Metrics.sidebarWidth)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Sidebar()
+                .frame(maxHeight: .infinity)
+                .zIndex(2)
+        }
+    }
+
     private var content: some View {
         ZStack {
-            switch model.screen {
-            case .map:
-                WorldMapView()
-            case .people, .moments, .notes, .settings:
-                ComingNextView(screen: model.screen)
+            Group {
+                switch model.screen {
+                case .map: WorldMapView()
+                case .people: PeopleView()
+                case .moments: MomentsView()
+                case .notes: ContextNotesView()
+                case .settings: ContentsView()
+                }
             }
+            .id(model.screen)
+            .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 8)), removal: .opacity))
 
             if let id = model.openMomentID, let moment = model.moment(id) {
-                MomentPreview(moment: moment)
+                MomentDetailView(moment: moment)
+                    .id(moment.id)
                     .transition(.opacity)
+                    .zIndex(5)
             }
         }
         .animation(.easeOut(duration: 0.18), value: model.openMomentID)
+        .animation(.easeOut(duration: 0.2), value: model.screen)
+        .clipped()
     }
 
     private var errorBinding: Binding<Bool> {
         Binding(get: { model.lastError != nil }, set: { if !$0 { model.lastError = nil } })
-    }
-}
-
-/// Stand-in for screens that arrive in later iterations.
-struct ComingNextView: View {
-    let screen: Screen
-
-    var body: some View {
-        ZStack {
-            DotGrid()
-            VStack(spacing: Tokens.Space.ml) {
-                Text(screen.number)
-                    .textStyle(Tokens.Typography.monoSmall)
-                    .foregroundStyle(screen.color.onFill)
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 10)
-                    .background(RoundedRectangle(cornerRadius: Tokens.Radius.chipSquare).fill(screen.color.fill))
-                Text(screen.label)
-                    .textStyle(Tokens.Typography.displayTitle)
-                    .foregroundStyle(Tokens.Palette.ink)
-                Text("this page gets built next. the world map is ready to explore.")
-                    .textStyle(Tokens.Typography.handNote)
-                    .foregroundStyle(Tokens.Palette.pencil)
-                    .rotationEffect(.degrees(-1.5))
-            }
-            .padding(.vertical, 48)
-            .padding(.horizontal, 56)
-            .background(TornPaperShape().fill(Tokens.Palette.card))
-            .shadow(Tokens.Shadows.paperCard)
-            .rotationEffect(.degrees(-1))
-        }
     }
 }

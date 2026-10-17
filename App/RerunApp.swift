@@ -12,6 +12,7 @@ struct RerunApp: App {
         // Launched with `swift run` there's no app bundle; still show a Dock icon and menu bar.
         if Bundle.main.bundleIdentifier == nil {
             NSApplication.shared.setActivationPolicy(.regular)
+            AppIcon.applyForDevelopmentBuild()
         }
     }
 
@@ -26,11 +27,42 @@ struct RerunApp: App {
         .defaultSize(width: Tokens.Metrics.windowWidth, height: Tokens.Metrics.windowHeight)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            WorldCommands(model: model)
         }
 
         Settings {
             ProviderSettingsView()
                 .environmentObject(model)
+        }
+    }
+}
+
+/// The "World" menu.
+struct WorldCommands: Commands {
+    @ObservedObject var model: AppModel
+
+    var body: some Commands {
+        CommandMenu("World") {
+            Button("Play Last Moment") {
+                if let id = model.featuredMomentID, let moment = model.moment(id) { model.play(moment) }
+            }
+            .keyboardShortcut("p", modifiers: .command)
+            .disabled(model.featuredMomentID == nil || model.onboarding != nil)
+
+            Button("Back to the Map") {
+                model.stopPlaying()
+                model.go(to: .map)
+            }
+            .keyboardShortcut("0", modifiers: .command)
+            .disabled(model.onboarding != nil)
+
+            Divider()
+
+            Button(model.isSampleWorld ? "Build My World from Messages…" : "Rescan Messages") {
+                if model.isSampleWorld { model.onboarding = .privacy } else { model.rescan() }
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .disabled(model.onboarding != nil)
         }
     }
 }

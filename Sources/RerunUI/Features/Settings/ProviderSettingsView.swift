@@ -16,8 +16,14 @@ public struct ProviderSettingsView: View {
     public var body: some View {
         Form {
             Section {
-                ForEach(LLMProviderID.allCases, id: \.self) { provider in
+                ForEach(LLMProviderID.cloud, id: \.self) { provider in
                     keyRow(provider)
+                }
+                HStack {
+                    Text("On this Mac")
+                    Spacer()
+                    Text(OnDeviceModel.isAvailable ? "ready — no key needed" : OnDeviceModel.unavailableReason)
+                        .foregroundStyle(.secondary)
                 }
             } header: {
                 Text("API keys")
@@ -52,7 +58,7 @@ public struct ProviderSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 560, height: 640)
         .onAppear {
-            for provider in LLMProviderID.allCases {
+            for provider in LLMProviderID.cloud {
                 keys[provider] = model.secrets.apiKey(for: provider) ?? ""
             }
             access = model.messagesAccess
@@ -161,7 +167,7 @@ public struct ProviderSettingsView: View {
             }
         } else {
             Button(model.isSampleWorld ? "Build my world from Messages" : "Rescan Messages") {
-                Task { await model.rebuildWorld() }
+                model.rescan()
             }
             .disabled(access != .readable)
         }
