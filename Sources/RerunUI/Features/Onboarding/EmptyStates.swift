@@ -153,6 +153,7 @@ struct OnboardingProblemView: View {
     var body: some View {
         ZStack {
             DotGrid()
+            deskScatter
             if step == .locked {
                 EmptyStateCard(
                     title: "rerun can't open Messages",
@@ -182,6 +183,30 @@ struct OnboardingProblemView: View {
                 .place(bottom: 36)
                 .frame(maxWidth: .infinity)
         }
+    }
+
+    /// A few doodles so even a dead end looks like somebody's desk.
+    private var deskScatter: some View {
+        ZStack {
+            Doodle.star.foregroundStyle(Tokens.Palette.coral).frame(width: 22, height: 22)
+                .place(left: 210, top: 170)
+            Doodle.star.foregroundStyle(Tokens.Palette.blue).frame(width: 15, height: 15)
+                .place(right: 250, top: 250)
+            Doodle.star.foregroundStyle(Tokens.Palette.sun).frame(width: 12, height: 12)
+                .place(left: 300, bottom: 230)
+            Doodle.squiggle.foregroundStyle(Tokens.Palette.grape.opacity(0.7)).frame(width: 70, height: 14)
+                .rotationEffect(.degrees(-6))
+                .place(right: 230, bottom: 190)
+            CoffeeRing()
+                .frame(width: 120, height: 120)
+                .place(left: 120, bottom: 90)
+            Text(step == .locked ? "we'll wait ✦" : "it's quiet in here…")
+                .font(Tokens.Typeface.caveat(bold: false).font(size: 22))
+                .foregroundStyle(Tokens.Palette.pencil)
+                .rotationEffect(.degrees(6))
+                .place(right: 170, top: 160)
+        }
+        .allowsHitTesting(false)
     }
 
     private var syncHelp: some View {

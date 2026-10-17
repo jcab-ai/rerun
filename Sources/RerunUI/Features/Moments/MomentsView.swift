@@ -120,8 +120,18 @@ struct MomentsView: View {
                         }
                     }
                 }
+                YearRecap(year: year, moments: moments, loudest: loudest(in: moments))
+                    .rotationEffect(.degrees(year.isMultiple(of: 2) ? 2.5 : -2))
+                    .padding(.top, 6)
             }
         }
+    }
+
+    /// Whoever is in the most of the year's moments ("the ducks").
+    private func loudest(in moments: [Moment]) -> String? {
+        let counts = Dictionary(grouping: moments, by: \.primaryPersonID).mapValues(\.count)
+        guard let top = counts.max(by: { ($0.value, $1.key) < ($1.value, $0.key) }) else { return nil }
+        return model.person(top.key)?.displayName
     }
 
     private func color(for tag: MomentTag) -> Color {
@@ -132,6 +142,30 @@ struct MomentsView: View {
         case .food, .family: Tokens.Palette.leaf
         case .everyday: Tokens.Palette.grape
         }
+    }
+}
+
+/// The last cell of every year: a little receipt tallying it up.
+private struct YearRecap: View {
+    let year: Int
+    let moments: [Moment]
+    let loudest: String?
+
+    var body: some View {
+        ReceiptPaper(width: 176, fontSize: 9.5, lineHeight: 1.6, padding: EdgeInsets(top: 14, leading: 13, bottom: 20, trailing: 13), teeth: 8) {
+            Text("\(String(year)) RECAP").fontWeight(.bold).tracking(1.5).frame(maxWidth: .infinity)
+            DashedRule().padding(.vertical, 6)
+            ReceiptLine("moments", "\(moments.count)")
+            ReceiptLine("real texts", moments.reduce(0) { $0 + $1.messageCount }.formatted())
+            ReceiptLine("played", "\(moments.filter(\.hasBeenPlayed).count)")
+            DashedRule().padding(.vertical, 6)
+            if let loudest {
+                ReceiptLine("LOUDEST", loudest.uppercased(), bold: true)
+            }
+        }
+        .shadow(Tokens.Shadows.pill)
+        .overlay(alignment: .top) { Tape(Tokens.Palette.tapeYellow, width: 56, height: 16, angle: -4).offset(y: -8) }
+        .accessibilityElement(children: .combine)
     }
 }
 

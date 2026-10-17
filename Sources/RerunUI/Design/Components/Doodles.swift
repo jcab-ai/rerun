@@ -168,6 +168,9 @@ public struct Postmark: View {
             Text(middle).font(Tokens.Typeface.fredoka(.bold).font(size: 13))
             Text(bottom).textStyle(Tokens.TextStyle(.mono(bold: false), 7, tracking: 1))
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+        .frame(width: 48)
         .foregroundStyle(color)
         .frame(width: 64, height: 64)
         .overlay(Circle().strokeBorder(color, lineWidth: 2))

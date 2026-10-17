@@ -89,9 +89,10 @@ struct PlayView: View {
     private var chapterCard: some View {
         let beat = session.sceneBeat
         let ended = session.phase == .ended
+        let chapters = beat?.chapter ?? session.run.chapterCount
         return VStack(alignment: .leading, spacing: 10) {
             Text(ended
-                 ? "THE END · \(session.moment.title.uppercased())"
+                 ? "THE END · \(chapters) CHAPTER\(chapters == 1 ? "" : "S") LATER"
                  : "CHAPTER \(beat?.chapter ?? 1)" + (beat?.chapterTitle.map { " · \($0.uppercased())" } ?? ""))
                 .textStyle(Tokens.TextStyle(.mono(bold: false), 10, tracking: 1.5))
                 .lineLimit(2)

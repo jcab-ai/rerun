@@ -38,7 +38,7 @@ struct ChoosePeopleView: View {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 230, alignment: .trailing)
                     .rotationEffect(.degrees(-4))
-                    .place(right: 40, top: 206)
+                    .place(right: 40, top: 192)
             }
         }
     }

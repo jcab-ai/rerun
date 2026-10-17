@@ -201,7 +201,8 @@ struct LockScreenPolaroid: View {
     @ObservedObject var session: PlaySession
 
     private var latest: SimulatedMessage? {
-        session.current?.messages.first { !$0.isFromPlayer } ?? session.current?.reactions.first { !$0.isFromPlayer }
+        // Newest on top, like the real lock screen.
+        session.current?.messages.last { !$0.isFromPlayer } ?? session.current?.reactions.last { !$0.isFromPlayer }
     }
 
     private var clock: String {

@@ -102,7 +102,8 @@ struct StorylineView: View {
     private var moments: [Moment] { model.moments(with: person.id) }
     private var voice: VoiceProfile? { model.voice(person.id) }
     private var isLongest: Bool {
-        model.includedPeople.max { $0.messageCount < $1.messageCount }?.id == person.id
+        // Group chats are loud, not long — the title goes to a person.
+        model.includedPeople.filter { !$0.isGroup }.max { $0.messageCount < $1.messageCount }?.id == person.id
     }
 
     private static let slot: CGFloat = 190

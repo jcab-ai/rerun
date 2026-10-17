@@ -114,7 +114,8 @@ struct MiniBoardingPass: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                Text([evidence[.carrier]?.components(separatedBy: " ").first, evidence[.flight], evidence[.gate].map { "GATE \($0)" }].compactMap { $0 }.joined(separator: " · "))
+                // The titled (storyline) pass is narrower, so it skips the gate.
+                Text([evidence[.carrier]?.components(separatedBy: " ").first, evidence[.flight], title == nil ? evidence[.gate].map { "GATE \($0)" } : nil].compactMap { $0 }.joined(separator: " · "))
                     .textStyle(Tokens.TextStyle(.mono(bold: false), title == nil ? 9 : 8, tracking: 1))
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
@@ -188,9 +189,10 @@ struct ReceiptProp: View {
                 .foregroundStyle(Tokens.Palette.pencil)
                 .frame(maxWidth: .infinity)
         }
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottomTrailing) {
+            // Thumped down over the total, the way a cashier would.
             if let stamp = evidence[.stamp] {
-                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: 12).offset(x: 18, y: 26)
+                RubberStamp(stamp, color: Tokens.Palette.leaf, size: 22, tilt: -12).offset(x: 16, y: -58)
             }
         }
         .overlay(alignment: .topLeading) { PaperClip().rotationEffect(.degrees(-8)).offset(x: 18, y: -16) }

@@ -220,8 +220,8 @@ struct MomentDetailView: View {
                         PersonPill(
                             initial: person.isGroup ? "🦆" : person.initial,
                             name: person.displayName,
-                            // Big casts drop the captions so everyone fits on one row.
-                            caption: moment.personIDs.count > 2 ? nil : model.voice(person.id)?.summary,
+                            // Captions only fit when it's just them and you.
+                            caption: moment.personIDs.count > 1 ? nil : model.voice(person.id)?.summary,
                             color: person.color.fill
                         )
                     }
